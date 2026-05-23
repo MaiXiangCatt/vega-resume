@@ -1,0 +1,39 @@
+{
+  "name": "@vega-resume/vega-cli",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "A CLI tool for Vega Resume.",
+  "private": true,
+  "author": "Maixiangcatt",
+  "license": "MIT",
+  "homepage": "https://github.com/maixiangCatt/vega-resume#readme",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "vega": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.2",
+    "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "bumpp": "^11.1.0",
+    "tsdown": "^0.22.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  }
+}
