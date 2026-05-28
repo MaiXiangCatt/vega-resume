@@ -44,7 +44,7 @@
 | 鉴权 | `JWT` + `bcrypt` | 注册、登录、会话签发与校验 | 权限边界保持在自有服务内部 |
 | 文件存储 | `Local File System` | 头像、附件、导出 PDF | MVP 阶段降低外部依赖 |
 | 样式与组件 | `Tailwind CSS` + `shadcn/ui` + `Storybook` | 设计系统、组件隔离预览 | 便于局部修改和隔离开发 |
-| 状态管理 | `TanStack Query` + `Zustand` | 服务端状态与本地编辑状态分治 | 与前端五层结构协同 |
+| 状态管理 | `TanStack Query` + `Zustand` | 服务端状态与本地编辑状态分治 | 与前端五层架构协同 |
 | 契约与代码生成 | `OpenSpec` + `OpenAPI 3.1` + `orval` + `oapi-codegen` | 变更规约、TS client、Go 桩代码 | 变更治理与 API 契约治理分层 |
 | **流程工具** | **`vega` (Node.js + commander.js)** | 需求状态管理、阶段推进 | 与前端心智一致；`packages/vega-cli` 下统一维护，支持 `pnpm link --global` 实时调试 |
 | 测试 | `Vitest` + `RTL` + `Playwright` + `Go test` | 单元、组件、服务、关键链路回归 | 多层闭环 |
@@ -401,7 +401,7 @@ vega-publish:      ## 发布 vega CLI（需内部 registry）
 | 拦截层 | 工具 | 调度命令 | 主要检查点 | 本项目示例 |
 | --- | --- | --- | --- | --- |
 | 契约与生成 | OpenSpec + OpenAPI lint + orval + oapi-codegen | `make spec-check`、`make generate` | 接口字段、数据模型、生成物与契约一致 | 修改 resume 响应后，TS client 与 Go stub 同步更新 |
-| 前端单元/组件 | Vitest + RTL | `make test-web` | models、controller、store、表单交互 | 修改工作经历顺序后状态映射正确 |
+| 前端单元/组件 | Vitest + RTL | `make test-web` | models、hooks、store、表单交互 | 修改工作经历顺序后状态映射正确 |
 | 后端服务/API | Go test + httptest + PostgreSQL 测试库 | `make test-server` | handler 输入输出、鉴权、JSONB 读写 | 更新简历接口拒绝非法 payload |
 | CLI 自身 | Vitest | `make test-cli` | `vega` 命令的状态机流转、参数校验 | `vega transition` 在非法阶段时报错 |
 | 全链路 E2E | Playwright | `make e2e` | 真实浏览器 + Go 服务 + PostgreSQL | 创建 → 编辑 → 保存 → 预览 → 分享 |
@@ -477,7 +477,7 @@ vega-resume/
 │   │   ├── package.json
 │   │   └── src/
 │   │       ├── ui/                     # 展示层
-│   │       ├── controller/             # 流程编排
+│   │       ├── hooks/                  # 编排 hooks（useXxx）
 │   │       ├── services/               # 业务逻辑
 │   │       ├── store/                  # 状态管理
 │   │       └── models/                 # 领域模型
@@ -539,8 +539,8 @@ vega-resume/
 
 ### 10.1 前端五层架构约束
 为避免 Agent 把业务逻辑随意塞入 UI 层，前端代码必须严格遵守以下越层禁止规则：
-- **ui/**：只允许视图渲染和用户事件传递。禁止直接调用 `services` 或直接修改 `store`，只能通过 `controller` 桥接或派发。
-- **controller/**：充当“胶水层”，编排 `services` 与 `store`，处理页面级的副作用（Effects）与业务流程。
+- **ui/**：只允许视图渲染和用户事件传递。禁止直接调用 `services` 或直接修改 `store`，只能通过 `hooks` 桥接或派发。
+- **hooks/**：自定义 React hooks（`useXxx`），编排 `services` 与 `store`，处理页面级的副作用（Effects）与业务流程。
 - **services/**：纯粹的业务逻辑与 API 请求。无任何 UI 依赖，必须能在 Node.js 或测试环境中独立运行。
 - **store/**：全局状态定义（Zustand 等）。禁止包含复杂业务逻辑，只暴露基础的 state 和纯粹的 action。
 - **models/**：只包含 TS 类型定义（Types/Interfaces）和纯函数（数据转换、格式化），绝对禁止任何副作用。

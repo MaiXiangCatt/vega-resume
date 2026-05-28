@@ -56,8 +56,8 @@ JS and Go are physically isolated. `pnpm-workspace.yaml` covers `apps/*` + `pack
 
 Strict layering rules — do not violate these boundaries:
 
-- **`ui/`** — View rendering and event forwarding only. No direct `services` calls or `store` mutations; bridge through `controller`.
-- **`controller/`** — Glue layer orchestrating `services` and `store`. Handles page-level effects and flows.
+- **`ui/`** — View rendering and event forwarding only. No direct `services` calls or `store` mutations; bridge through `hooks`.
+- **`hooks/`** — Custom React hooks orchestrating `services` and `store`. Handles page-level effects and flows.
 - **`services/`** — Pure business logic and API calls. No UI deps. Must run in Node.js/test environments.
 - **`store/`** — Zustand state definitions. No complex logic, only state + pure actions.
 - **`models/`** — TS types/interfaces and pure transform functions only. Zero side effects.
