@@ -1,0 +1,57 @@
+packages/vega-cli/tsconfig.json
+  584d9ba294fa6c2e 19 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1d521db7ad837431ffaf17","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":19}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c32a7b4ee7e4d247ea9b769c2540e670e8e4b692",
+  "prompts": {
+    "584d9ba294fa6c2e": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a01b7ca93a4baa7775a550f",
+        "model": "openrouter-1o__dev"
+      },
+      "human_author": "maixiangCat <valojia123@gmail.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "packages/vega-cli/tsconfig.json": [
+      {
+        "hash": "584d9ba294fa6c2e",
+        "line_ranges": [
+          {
+            "Single": 19
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1d521db7ad837431ffaf17",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 19
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "584d9ba294fa6c2e": {
+      "tool": "trae",
+      "conversation_id": "6a01b7ca93a4baa7775a550f",
+      "session_id": "6a01b7ca93a4baa7775a550f",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
