@@ -27,13 +27,24 @@ export function registerLifecycleCommands(program: Command, context: CliContext)
 
   program.command('complete').action(async () => {
     const state = await readActiveRequirement(context.cwd)
-    await writeRequirement(context.cwd, completeCurrentPhase(state, context.now().toISOString()))
+    const previousPhase = state.current_phase
+    const nextState = completeCurrentPhase(state, context.now().toISOString())
+
+    await writeRequirement(context.cwd, nextState)
+
+    if (nextState.status === 'completed') {
+      context.stdout(`Completed phase "${previousPhase}"; requirement "${nextState.name}" is done.\n`)
+      return
+    }
+
+    context.stdout(`Completed phase "${previousPhase}"; next phase is "${nextState.current_phase}".\n`)
   })
 
   program.command('archive').action(async () => {
     const state = await readActiveRequirement(context.cwd)
 
     if (state.status === 'completed') {
+      context.stdout(`Requirement "${state.name}" is already archived.\n`)
       return
     }
 
@@ -41,7 +52,10 @@ export function registerLifecycleCommands(program: Command, context: CliContext)
       throw new CliError('Archive can only complete a requirement that is already in the archive phase.')
     }
 
-    await writeRequirement(context.cwd, completeCurrentPhase(state, context.now().toISOString()))
+    const nextState = completeCurrentPhase(state, context.now().toISOString())
+
+    await writeRequirement(context.cwd, nextState)
+    context.stdout(`Archived requirement "${nextState.name}".\n`)
   })
 
   program
@@ -53,10 +67,12 @@ export function registerLifecycleCommands(program: Command, context: CliContext)
         context.cwd,
         failCurrentPhase(state, context.now().toISOString(), commandOptions.reason),
       )
+      context.stdout(`Marked phase "${state.current_phase}" as failed.\n`)
     })
 
   program.command('retry').action(async () => {
     const state = await readActiveRequirement(context.cwd)
     await writeRequirement(context.cwd, retryCurrentPhase(state, context.now().toISOString()))
+    context.stdout(`Retried phase "${state.current_phase}"; status is in_progress.\n`)
   })
 }

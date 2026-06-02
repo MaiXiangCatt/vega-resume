@@ -87,7 +87,7 @@ export async function initializeRequirement(
   name: string,
   workflow: Workflow,
   now: string,
-): Promise<void> {
+): Promise<RequirementState> {
   assertRequirementName(name)
   await ensureHarness(cwd)
 
@@ -96,6 +96,7 @@ export async function initializeRequirement(
   }
 
   await writeActiveRequirementName(cwd, name)
+  return readRequirement(cwd, name)
 }
 
 export async function switchRequirement(cwd: string, name: string): Promise<void> {

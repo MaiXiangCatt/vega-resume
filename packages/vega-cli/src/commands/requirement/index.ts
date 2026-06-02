@@ -26,7 +26,15 @@ export function registerRequirementCommands(program: Command, context: CliContex
     .argument('<name>')
     .option('--workflow <workflow>', 'workflow type: lite or full', 'lite')
     .action(async (name: string, commandOptions: { workflow: string }) => {
-      await initializeRequirement(context.cwd, name, parseWorkflow(commandOptions.workflow), context.now().toISOString())
+      const state = await initializeRequirement(
+        context.cwd,
+        name,
+        parseWorkflow(commandOptions.workflow),
+        context.now().toISOString(),
+      )
+      context.stdout(
+        `Requirement "${state.name}" is active (workflow: ${state.workflow}, phase: ${state.current_phase}).\n`,
+      )
     })
 
   requirement
@@ -71,5 +79,6 @@ export function registerRequirementCommands(program: Command, context: CliContex
     .argument('<name>')
     .action(async (name: string) => {
       await switchRequirement(context.cwd, name)
+      context.stdout(`Active requirement switched to "${name}".\n`)
     })
 }

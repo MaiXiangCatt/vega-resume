@@ -8,5 +8,6 @@ export function registerInitCommand(program: Command, context: CliContext): void
     .description('initialize .vega-harness directories')
     .action(async () => {
       await ensureHarness(context.cwd)
+      context.stdout('Initialized .vega-harness\n')
     })
 }

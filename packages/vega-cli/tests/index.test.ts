@@ -41,7 +41,11 @@ describe('vega CLI core commands', () => {
 
     const result = await run(['init'], cwd)
 
-    expect(result).toMatchObject({ exitCode: 0, stderr: '' })
+    expect(result).toMatchObject({
+      exitCode: 0,
+      stdout: 'Initialized .vega-harness\n',
+      stderr: '',
+    })
     expect(await readFile(join(cwd, '.vega-harness', '.active'), 'utf8')).toBe('')
     expect((await stat(join(cwd, '.vega-harness', 'requirements'))).isDirectory()).toBe(true)
     expect((await stat(join(cwd, '.vega-harness', 'docs'))).isDirectory()).toBe(true)
@@ -50,7 +54,11 @@ describe('vega CLI core commands', () => {
   it('creates a lite requirement from the init phase and exposes status as JSON', async () => {
     const cwd = await createWorkspace()
 
-    await run(['requirement', 'init', 'resume-editor'], cwd)
+    expect(await run(['requirement', 'init', 'resume-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Requirement "resume-editor" is active (workflow: lite, phase: init).\n',
+      stderr: '',
+    })
     const result = await run(['requirement', 'status', '--json'], cwd)
 
     expect(result.exitCode).toBe(0)
@@ -100,7 +108,11 @@ describe('vega CLI core commands', () => {
     const cwd = await createWorkspace()
 
     await run(['requirement', 'init', 'resume-editor'], cwd)
-    await run(['complete'], cwd)
+    expect(await run(['complete'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Completed phase "init"; next phase is "brainstorm".\n',
+      stderr: '',
+    })
 
     expect(JSON.parse((await run(['next', '--json'], cwd)).stdout)).toMatchObject({
       phase: 'brainstorm',
@@ -118,7 +130,11 @@ describe('vega CLI core commands', () => {
       done: false,
     })
 
-    await run(['archive'], cwd)
+    expect(await run(['archive'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Archived requirement "resume-editor".\n',
+      stderr: '',
+    })
 
     expect(JSON.parse((await run(['next', '--json'], cwd)).stdout)).toEqual({
       requirement: 'resume-editor',
@@ -161,7 +177,11 @@ describe('vega CLI core commands', () => {
 
     await run(['requirement', 'init', 'first'], cwd)
     await run(['requirement', 'init', 'second', '--workflow', 'full'], cwd)
-    await run(['requirement', 'switch', 'first'], cwd)
+    expect(await run(['requirement', 'switch', 'first'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Active requirement switched to "first".\n',
+      stderr: '',
+    })
 
     expect((await run(['requirement', 'current', '--json'], cwd)).stdout).toBe(
       JSON.stringify({ current: 'first' }) + '\n',
@@ -176,7 +196,11 @@ describe('vega CLI core commands', () => {
     const cwd = await createWorkspace()
 
     await run(['requirement', 'init', 'resume-editor'], cwd)
-    await run(['fail', '--reason', 'lint failed'], cwd)
+    expect(await run(['fail', '--reason', 'lint failed'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Marked phase "init" as failed.\n',
+      stderr: '',
+    })
 
     expect(JSON.parse((await run(['next', '--json'], cwd)).stdout)).toMatchObject({
       phase: 'init',
@@ -185,13 +209,30 @@ describe('vega CLI core commands', () => {
       done: false,
     })
 
-    await run(['retry'], cwd)
+    expect(await run(['retry'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Retried phase "init"; status is in_progress.\n',
+      stderr: '',
+    })
 
     expect(JSON.parse((await run(['next', '--json'], cwd)).stdout)).toMatchObject({
       phase: 'init',
       status: 'in_progress',
       skill: 'vega-requirement-init',
       done: false,
+    })
+  })
+
+  it('prints errors to stderr for invalid state transitions', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+    const result = await run(['archive'], cwd)
+
+    expect(result).toEqual({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'Error: Archive can only complete a requirement that is already in the archive phase.\n',
     })
   })
 })
