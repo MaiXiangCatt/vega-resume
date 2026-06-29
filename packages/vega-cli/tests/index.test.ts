@@ -192,6 +192,37 @@ describe('vega CLI core commands', () => {
     ])
   })
 
+  it('can set and get document paths on the active requirement', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+
+    expect(await run(['doc', 'get', 'prd', '--json'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: JSON.stringify({ type: 'prd', path: null }) + '\n',
+      stderr: '',
+    })
+    expect(await run(['doc', 'get', 'prd'], cwd)).toEqual({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'Error: No document path set for type "prd".\n',
+    })
+
+    expect(await run(['doc', 'set', 'prd', 'docs/designAndPrd/resume_mvp_prd_v2.md'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Document "prd" set to "docs/designAndPrd/resume_mvp_prd_v2.md".\n',
+      stderr: '',
+    })
+    expect(await run(['doc', 'get', 'prd'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'docs/designAndPrd/resume_mvp_prd_v2.md\n',
+      stderr: '',
+    })
+
+    const state = JSON.parse(await readFile(join(cwd, '.vega-harness', 'requirements', 'resume-editor.json'), 'utf8'))
+    expect(state.documents.prd).toBe('docs/designAndPrd/resume_mvp_prd_v2.md')
+  })
+
   it('routes failed phases to experience and lets retry resume the current phase', async () => {
     const cwd = await createWorkspace()
 
