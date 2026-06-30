@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runVega } from '../src'
+import type { CommandRunner } from '../src/core/types'
 
 const fixedNow = () => new Date('2026-06-01T00:00:00.000Z')
 
@@ -14,7 +15,7 @@ async function createWorkspace() {
   return cwd
 }
 
-async function run(args: string[], cwd: string) {
+async function run(args: string[], cwd: string, commandRunner: CommandRunner = async () => {}) {
   let stdout = ''
   let stderr = ''
   const exitCode = await runVega(args, {
@@ -26,6 +27,7 @@ async function run(args: string[], cwd: string) {
     stderr: (value) => {
       stderr += value
     },
+    commandRunner,
   })
 
   return { exitCode, stdout, stderr }
@@ -38,14 +40,24 @@ describe('vega CLI core commands', () => {
 
   it('initializes the harness directory structure', async () => {
     const cwd = await createWorkspace()
+    const commands: Array<{ command: string; args: string[]; cwd: string }> = []
 
-    const result = await run(['init'], cwd)
+    const result = await run(['init'], cwd, async (command, args, options) => {
+      commands.push({ command, args: [...args], cwd: options.cwd })
+    })
 
     expect(result).toMatchObject({
       exitCode: 0,
-      stdout: 'Initialized .vega-harness\n',
+      stdout: 'Initialized .vega-harness\nInstalling Vega skills...\nInstalled Vega skills.\n',
       stderr: '',
     })
+    expect(commands).toEqual([
+      {
+        command: 'npx',
+        args: ['skills', 'add', 'MaiXiangCatt/vega-resume', '--skill', '*'],
+        cwd,
+      },
+    ])
     expect(await readFile(join(cwd, '.vega-harness', '.active'), 'utf8')).toBe('')
     expect((await stat(join(cwd, '.vega-harness', 'requirements'))).isDirectory()).toBe(true)
     expect((await stat(join(cwd, '.vega-harness', 'docs'))).isDirectory()).toBe(true)
