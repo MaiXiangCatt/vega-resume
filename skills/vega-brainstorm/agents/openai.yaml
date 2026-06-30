@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vega 头脑风暴"
+  short_description: "澄清需求、比较方案并推进 Vega brainstorm 阶段"
+  default_prompt: "使用 $vega-brainstorm 澄清当前需求并形成经确认的设计文档。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vega 归档"
+  short_description: "同步 OpenSpec 主规格与长期文档并关闭 Vega 需求"
+  default_prompt: "使用 $vega-archive 归档当前已验证的 Vega 需求。"
