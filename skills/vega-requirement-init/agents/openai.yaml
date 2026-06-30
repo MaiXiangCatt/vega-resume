@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vega 需求初始化"
+  short_description: "初始化 Vega 需求状态、工作流选择与可选 PRD 上下文"
+  default_prompt: "使用 $vega-requirement-init 初始化一个新的 Vega Harness 需求。"
