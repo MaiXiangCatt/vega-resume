@@ -51,11 +51,24 @@ export interface NextPayload {
 
 export type OutputWriter = (value: string) => void
 
+export interface CommandRunnerOptions {
+  cwd: string
+  stdout: OutputWriter
+  stderr: OutputWriter
+}
+
+export type CommandRunner = (
+  command: string,
+  args: readonly string[],
+  options: CommandRunnerOptions,
+) => Promise<void>
+
 export interface RunOptions {
   cwd?: string
   now?: () => Date
   stdout?: OutputWriter
   stderr?: OutputWriter
+  commandRunner?: CommandRunner
 }
 
 export interface CliContext {
@@ -63,4 +76,5 @@ export interface CliContext {
   now: () => Date
   stdout: OutputWriter
   stderr: OutputWriter
+  commandRunner: CommandRunner
 }

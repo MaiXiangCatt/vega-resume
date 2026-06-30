@@ -1,6 +1,7 @@
 import { Command, CommanderError } from 'commander'
 import { registerCommands } from '../commands'
 import { CliError } from '../core/errors'
+import { runExternalCommand } from '../core/process'
 import type { CliContext, RunOptions } from '../core/types'
 
 export function buildProgram(context: CliContext): Command {
@@ -25,6 +26,7 @@ export async function runVega(args: string[], runOptions: RunOptions = {}): Prom
     now: runOptions.now ?? (() => new Date()),
     stdout: runOptions.stdout ?? ((value) => process.stdout.write(value)),
     stderr: runOptions.stderr ?? ((value) => process.stderr.write(value)),
+    commandRunner: runOptions.commandRunner ?? runExternalCommand,
   }
 
   try {

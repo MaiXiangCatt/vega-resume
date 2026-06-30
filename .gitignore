@@ -65,3 +65,7 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+
+# skills
+skills-lock.json
+*/skills/
