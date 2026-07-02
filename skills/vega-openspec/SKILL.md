@@ -23,6 +23,7 @@ description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven cha
 - `vega doc get prd --json`；
 - `vega doc get brainstorm --json`；
 - Full workflow 还应读取 `vega doc get tech_design --json`，如果已存在；
+- Full workflow 还应读取 `vega doc get breakdown --json`；
 - Full workflow 的 `vega module list --json`；
 - 相关代码结构、OpenAPI 契约目录和项目约束。
 
@@ -87,9 +88,10 @@ cat openspec/config.yaml
 vega doc get prd --json
 vega doc get brainstorm --json
 vega doc get tech_design --json
+vega doc get breakdown --json
 ```
 
-读取所有非空路径。`tech_design` 在 Lite workflow 中可以为空；Full workflow 中如果为空，先检查是否有等价文档或询问用户是否允许仅基于 brainstorm 继续。
+读取所有非空路径。`tech_design` 和 `breakdown` 在 Lite workflow 中可以为空；Full workflow 中如果为空，先检查是否有等价文档，否则返回 `vega-tech-design` 或 `vega-breakdown` 补齐。
 
 如果 workflow 为 `full`，执行：
 
@@ -100,6 +102,7 @@ vega module list --json
 要求：
 
 - 至少存在一个模块；如果为空，说明 breakdown 阶段未登记模块，应返回 `vega-breakdown` 或让用户确认先补模块；
+- breakdown 文档中的模块名必须能与 `vega module list --json` 对齐；
 - 只把 `pending` 和 `completed` 作为合法状态；其他状态视为 CLI state 异常；
 - `completed` 模块仍可作为上下文读取，但本阶段重点为尚未形成清晰规约的 pending 模块；
 - 不在 Lite workflow 下调用 `vega module`。

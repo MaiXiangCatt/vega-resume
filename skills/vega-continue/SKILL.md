@@ -96,6 +96,7 @@ vega module list --json
 vega doc get prd --json
 vega doc get brainstorm --json
 vega doc get tech_design --json
+vega doc get breakdown --json
 vega doc get openspec_dir --json
 vega doc get verification_report --json
 vega doc get experience_report --json
@@ -111,7 +112,7 @@ vega doc get experience_report --json
 | `brainstorm` | `prd` |
 | `tech_design` | `prd`、`brainstorm` |
 | `breakdown` | `prd`、`brainstorm`、`tech_design` |
-| `openspec` | `prd`、`brainstorm`，full workflow 还应有 `tech_design` 和模块列表 |
+| `openspec` | `prd`、`brainstorm`，full workflow 还应有 `tech_design`、`breakdown` 和模块列表 |
 | `implementation` | `openspec_dir`；full workflow 还应读取 pending 模块 |
 | `verification` | `openspec_dir`；full workflow 还应确认模块状态 |
 | `archive` | `openspec_dir`、`verification_report` |
@@ -179,7 +180,7 @@ git status --short
 当前阶段：<phase> / <status>
 模块：<lite: none | full: pending=[...], completed=[...]>
 下一步：<skill 或 done>
-关键产物：prd=<...>, brainstorm=<...>, openspec_dir=<...>, verification_report=<...>
+关键产物：prd=<...>, brainstorm=<...>, tech_design=<...>, breakdown=<...>, openspec_dir=<...>, verification_report=<...>
 工作区：<clean 或列出需要用户关注的改动>
 ```
 

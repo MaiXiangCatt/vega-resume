@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vega 模块拆解"
+  short_description: "将 Full 需求拆解为可并行实现的模块"
+  default_prompt: "使用 $vega-breakdown 为当前 Vega Full 需求拆解模块。"
