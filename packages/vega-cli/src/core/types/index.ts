@@ -4,6 +4,8 @@ export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
 
 export type RequirementStatus = 'in_progress' | 'completed'
 
+export type ModuleStatus = 'pending' | 'completed'
+
 export type Phase =
   | 'init'
   | 'brainstorm'
@@ -21,6 +23,14 @@ export interface PhaseState {
   failed_reason?: string
 }
 
+export interface ModuleState {
+  name: string
+  status: ModuleStatus
+  created_at: string
+  updated_at: string
+  completed_at?: string
+}
+
 export interface RequirementState {
   name: string
   workflow: Workflow
@@ -28,7 +38,7 @@ export interface RequirementState {
   current_phase: Phase
   phases: Partial<Record<Phase, PhaseState>>
   documents: Record<string, string | null>
-  modules: unknown[]
+  modules: ModuleState[]
   created_at: string
   updated_at: string
 }

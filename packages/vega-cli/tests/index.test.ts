@@ -235,6 +235,91 @@ describe('vega CLI core commands', () => {
     expect(state.documents.prd).toBe('docs/designAndPrd/resume_mvp_prd_v2.md')
   })
 
+  it('can manage modules for a full workflow requirement', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor', '--workflow', 'full'], cwd)
+
+    expect(await run(['module', 'list'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+    })
+    expect(await run(['module', 'add', 'web-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Module "web-editor" added.\n',
+      stderr: '',
+    })
+    expect(await run(['module', 'add', 'api-server'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Module "api-server" added.\n',
+      stderr: '',
+    })
+    expect(await run(['module', 'add', 'web-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Module "web-editor" added.\n',
+      stderr: '',
+    })
+
+    expect(await run(['module', 'list'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'api-server: pending\nweb-editor: pending\n',
+      stderr: '',
+    })
+
+    const pendingModule = JSON.parse((await run(['module', 'status', 'web-editor', '--json'], cwd)).stdout)
+    expect(pendingModule).toEqual({
+      name: 'web-editor',
+      status: 'pending',
+      created_at: '2026-06-01T00:00:00.000Z',
+      updated_at: '2026-06-01T00:00:00.000Z',
+    })
+
+    expect(await run(['module', 'complete', 'web-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Module "web-editor" completed.\n',
+      stderr: '',
+    })
+    expect(await run(['module', 'complete', 'web-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Module "web-editor" completed.\n',
+      stderr: '',
+    })
+
+    expect(await run(['module', 'status', 'web-editor'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'web-editor: completed\n',
+      stderr: '',
+    })
+    expect(JSON.parse((await run(['module', 'list', '--json'], cwd)).stdout)).toEqual([
+      {
+        name: 'api-server',
+        status: 'pending',
+        created_at: '2026-06-01T00:00:00.000Z',
+        updated_at: '2026-06-01T00:00:00.000Z',
+      },
+      {
+        name: 'web-editor',
+        status: 'completed',
+        created_at: '2026-06-01T00:00:00.000Z',
+        updated_at: '2026-06-01T00:00:00.000Z',
+        completed_at: '2026-06-01T00:00:00.000Z',
+      },
+    ])
+  })
+
+  it('rejects module commands for lite workflow requirements', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+
+    expect(await run(['module', 'add', 'web-editor'], cwd)).toEqual({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'Error: Module commands are only available for full workflow requirements.\n',
+    })
+  })
+
   it('routes failed phases to experience and lets retry resume the current phase', async () => {
     const cwd = await createWorkspace()
 
