@@ -1,4 +1,4 @@
 interface:
   display_name: "Vega 实现"
-  short_description: "按 OpenSpec 任务执行 TDD 实现并推进验证阶段"
+  short_description: "按 OpenSpec 和 Full 模块队列执行 TDD 实现"
   default_prompt: "使用 $vega-implementation 按当前 OpenSpec change 执行 TDD 实现。"

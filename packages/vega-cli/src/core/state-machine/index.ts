@@ -1,6 +1,6 @@
 import { phasesForWorkflow, skillByPhase } from '../constants'
 import { CliError } from '../errors'
-import type { NextPayload, PhaseState, RequirementState } from '../types'
+import type { NextPayload, Phase, PhaseState, RequirementState } from '../types'
 
 function skillForCurrentPhase(state: RequirementState, phaseState: PhaseState): string | null {
   if (state.status === 'completed') {
@@ -81,6 +81,80 @@ export function completeCurrentPhase(state: RequirementState, now: string): Requ
     phases: {
       ...phases,
       [nextPhase]: { status: 'in_progress' },
+    },
+    updated_at: now,
+  }
+}
+
+export function assertWorkflowPhase(state: RequirementState, phase: Phase): void {
+  if (!phasesForWorkflow(state.workflow).includes(phase)) {
+    throw new CliError(`Phase "${phase}" is not part of the ${state.workflow} workflow.`)
+  }
+}
+
+export function transitionToPhase(
+  state: RequirementState,
+  targetPhase: Phase,
+  force: boolean,
+  now: string,
+): RequirementState {
+  assertWorkflowPhase(state, targetPhase)
+
+  const workflowPhases = phasesForWorkflow(state.workflow)
+  const currentIndex = workflowPhases.indexOf(state.current_phase)
+  const targetIndex = workflowPhases.indexOf(targetPhase)
+
+  if (!force) {
+    if (state.status === 'completed') {
+      throw new CliError('Completed requirements cannot transition to another phase.')
+    }
+
+    const phaseState = currentPhaseState(state)
+
+    if (phaseState.status === 'failed') {
+      throw new CliError(`Current phase "${state.current_phase}" is failed. Run \`vega retry\` before transitioning.`)
+    }
+
+    if (phaseState.status !== 'in_progress') {
+      throw new CliError(`Current phase "${state.current_phase}" is not in progress.`)
+    }
+
+    if (targetIndex !== currentIndex + 1) {
+      throw new CliError(`Phase "${targetPhase}" is not the next phase after "${state.current_phase}".`)
+    }
+
+    return {
+      ...state,
+      current_phase: targetPhase,
+      phases: {
+        ...state.phases,
+        [state.current_phase]: {
+          ...phaseState,
+          status: 'completed',
+          completed_at: now,
+        },
+        [targetPhase]: { status: 'in_progress' },
+      },
+      updated_at: now,
+    }
+  }
+
+  const phases = Object.fromEntries(
+    Object.entries(state.phases).map(([phase, phaseState]) => [
+      phase,
+      phase === targetPhase || (phaseState.status !== 'in_progress' && phaseState.status !== 'failed')
+        ? phaseState
+        : { status: 'pending' },
+    ]),
+  ) as RequirementState['phases']
+
+  return {
+    ...state,
+    status: 'in_progress',
+    current_phase: targetPhase,
+    phases: {
+      ...phases,
+      [targetPhase]: { status: 'in_progress' },
     },
     updated_at: now,
   }

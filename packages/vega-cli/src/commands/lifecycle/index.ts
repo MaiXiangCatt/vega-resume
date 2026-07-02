@@ -1,4 +1,5 @@
 import type { Command } from 'commander'
+import { fullPhases } from '../../core/constants'
 import { CliError } from '../../core/errors'
 import { emitJson } from '../../core/output'
 import { readActiveRequirement, writeRequirement } from '../../core/requirements'
@@ -7,8 +8,18 @@ import {
   failCurrentPhase,
   getNextPayload,
   retryCurrentPhase,
+  transitionToPhase,
 } from '../../core/state-machine'
-import type { CliContext } from '../../core/types'
+import { verifyRequirementState } from '../../core/verification'
+import type { CliContext, Phase } from '../../core/types'
+
+function parsePhase(value: string): Phase {
+  if (!fullPhases.includes(value as Phase)) {
+    throw new CliError(`Unknown phase "${value}".`)
+  }
+
+  return value as Phase
+}
 
 export function registerLifecycleCommands(program: Command, context: CliContext): void {
   program
@@ -23,6 +34,47 @@ export function registerLifecycleCommands(program: Command, context: CliContext)
       }
 
       context.stdout(payload.done ? 'done\n' : `${payload.skill}\n`)
+    })
+
+  program
+    .command('verify')
+    .option('--json', 'print JSON')
+    .action(async (commandOptions: { json?: boolean }) => {
+      const payload = verifyRequirementState(await readActiveRequirement(context.cwd))
+
+      if (commandOptions.json) {
+        emitJson(payload, context.stdout)
+
+        if (!payload.valid) {
+          throw new CliError('State verification failed.')
+        }
+
+        return
+      }
+
+      if (!payload.valid) {
+        throw new CliError(`State verification failed:\n- ${payload.errors.join('\n- ')}`)
+      }
+
+      context.stdout('State is valid.\n')
+    })
+
+  program
+    .command('transition')
+    .argument('<phase>')
+    .option('--force', 'skip phase order validation')
+    .action(async (phase: string, commandOptions: { force?: boolean }) => {
+      const targetPhase = parsePhase(phase)
+      const state = await readActiveRequirement(context.cwd)
+      const nextState = transitionToPhase(
+        state,
+        targetPhase,
+        Boolean(commandOptions.force),
+        context.now().toISOString(),
+      )
+
+      await writeRequirement(context.cwd, nextState)
+      context.stdout(`Transitioned to phase "${nextState.current_phase}".\n`)
     })
 
   program.command('complete').action(async () => {

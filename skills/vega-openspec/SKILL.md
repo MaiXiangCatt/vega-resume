@@ -5,7 +5,7 @@ description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven cha
 
 # Vega OpenSpec 生成
 
-把 brainstorm / tech design 中已经确认的需求，转成可实施的 OpenSpec change。当前 Vega CLI 尚无模块级状态命令，因此本 Skill 按“一个活跃需求对应一个主 OpenSpec change”执行；后续如果补齐 `vega module` 能力，再扩展为多模块逐个生成。
+把 brainstorm / tech design 中已经确认的需求，转成可实施的 OpenSpec change。Lite workflow 按“一个活跃需求对应一个主 OpenSpec change”执行；Full workflow 必须读取 `vega module list --json`，在同一个 change 内按模块组织 capabilities、design 和 tasks，确保后续实现可以逐个模块推进并调用 `vega module complete`。
 
 ## 硬性边界
 
@@ -23,6 +23,8 @@ description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven cha
 - `vega doc get prd --json`；
 - `vega doc get brainstorm --json`；
 - Full workflow 还应读取 `vega doc get tech_design --json`，如果已存在；
+- Full workflow 还应读取 `vega doc get breakdown --json`；
+- Full workflow 的 `vega module list --json`；
 - 相关代码结构、OpenAPI 契约目录和项目约束。
 
 产出：
@@ -43,6 +45,7 @@ description: 将已经确认的 Vega 需求设计转成 OpenSpec spec-driven cha
 ```bash
 vega requirement status --json
 vega next --json
+vega verify --json
 git log -n 5 --oneline
 ```
 
@@ -58,6 +61,7 @@ git log -n 5 --oneline
 - 没有活跃需求：停止并使用 `vega-requirement-init`；
 - 尚未进入 `openspec`：停止并说明应先完成当前阶段；
 - 当前阶段为 `failed`：遵循 `vega next --json` 的恢复路由；
+- `vega verify --json` 失败：先修复状态完整性问题，不生成 OpenSpec；
 - 已进入 `implementation` 或更后阶段：不要重复生成或倒退，除非用户明确要求重新生成 change。
 
 ### 2. 检查 OpenSpec 和项目约束
@@ -84,9 +88,24 @@ cat openspec/config.yaml
 vega doc get prd --json
 vega doc get brainstorm --json
 vega doc get tech_design --json
+vega doc get breakdown --json
 ```
 
-读取所有非空路径。`tech_design` 在 Lite workflow 中可以为空；Full workflow 中如果为空，先检查是否有等价文档或询问用户是否允许仅基于 brainstorm 继续。
+读取所有非空路径。`tech_design` 和 `breakdown` 在 Lite workflow 中可以为空；Full workflow 中如果为空，先检查是否有等价文档，否则返回 `vega-tech-design` 或 `vega-breakdown` 补齐。
+
+如果 workflow 为 `full`，执行：
+
+```bash
+vega module list --json
+```
+
+要求：
+
+- 至少存在一个模块；如果为空，说明 breakdown 阶段未登记模块，应返回 `vega-breakdown` 或让用户确认先补模块；
+- breakdown 文档中的模块名必须能与 `vega module list --json` 对齐；
+- 只把 `pending` 和 `completed` 作为合法状态；其他状态视为 CLI state 异常；
+- `completed` 模块仍可作为上下文读取，但本阶段重点为尚未形成清晰规约的 pending 模块；
+- 不在 Lite workflow 下调用 `vega module`。
 
 读取时还要检查：
 
@@ -113,6 +132,7 @@ vega doc get tech_design --json
 - 表达需求目标，不使用 `misc-change`、`update-stuff`；
 - 如果 `openspec/changes/<change-name>/` 已存在，先读取现有状态并询问用户是继续、覆盖式修订，还是创建新名称；
 - 禁止删除已有 change 目录来“重新开始”。
+- Full workflow 默认仍使用一个主 change，模块名体现在 specs capability、design 小节和 tasks 分组中；只有用户明确要求或模块间完全独立时，才拆成多个 change。
 
 ### 5. 创建或恢复 OpenSpec change
 
@@ -160,6 +180,7 @@ openspec instructions <artifact-id> --change <change-name> --json
 注意：
 
 - `specs` 不是可选项；没有 specs 不允许生成 tasks；
+- Full workflow 中，`proposal.md` 必须列出模块清单和模块间依赖；`design.md` 必须按模块说明职责边界；`tasks.md` 必须按模块分组，每个模块至少包含测试、实现、验证步骤；
 - 不把 `context`、`rules` 等 OpenSpec 指令块原样复制进文件；
 - 如果 artifact instructions 缺少必须上下文，先问用户，不要猜。
 
@@ -171,6 +192,7 @@ openspec instructions <artifact-id> --change <change-name> --json
 - `specs/**/spec.md`：每个 capability 至少一个 `### Requirement:`，每个 Requirement 至少一个 `#### Scenario:`，场景使用 WHEN/THEN 表达；
 - `design.md`：列出受影响文件、职责边界、数据流、接口/契约影响、精确命令；
 - `tasks.md`：每个实现任务遵循测试先行，包含 Tests / Implementation / Verification 三类步骤；
+- Full workflow：每个 `vega module list --json` 中的模块都能在 proposal/design/tasks 中找到对应条目，且模块依赖顺序清楚；
 - API 变更明确指向 `contracts/openapi/`，并说明是否需要 `make generate`。
 
 然后执行：

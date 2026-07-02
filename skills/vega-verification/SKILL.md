@@ -7,7 +7,7 @@ description: 对已通过 implementation 测试的 Vega 需求执行代码质量
 
 `implementation` 阶段已经负责 TDD 和测试通过；本 Skill 负责在合入或归档前做更高层的质量门禁：静态检查、架构边界、安全风险、复杂度、死代码、契约一致性和文档化验证结论。
 
-当前 Vega CLI 尚无模块级验证命令，因此本 Skill 以一个活跃需求为验证单元，并结合 `git diff`、OpenSpec change、Makefile 目标和人工代码审查完成判断。
+验证以一个活跃需求为最终归档单元；Lite workflow 直接验证整需求，Full workflow 需要额外读取 `vega module list --json`，确认所有模块均已 completed，并按模块维度补充风险扫描和报告记录。当前 CLI 提供 `vega verify --json` 做状态文件完整性校验，但代码质量仍由本 Skill 的命令门禁和人工审查完成。
 
 ## 硬性边界
 
@@ -28,6 +28,7 @@ description: 对已通过 implementation 测试的 Vega 需求执行代码质量
 - `vega doc get brainstorm --json`；
 - `vega doc get tech_design --json`，如果存在；
 - `vega doc get openspec_dir --json`；
+- Full workflow 的 `vega module list --json`；
 - OpenSpec change 中的 `proposal.md`、`design.md`、`tasks.md`、`specs/**/spec.md`；
 - `git status --short`、`git diff --name-only`、`Makefile` 和受影响代码。
 
@@ -48,6 +49,7 @@ description: 对已通过 implementation 测试的 Vega 需求执行代码质量
 ```bash
 vega requirement status --json
 vega next --json
+vega verify --json
 git status --short
 git log -n 5 --oneline
 ```
@@ -64,7 +66,16 @@ git log -n 5 --oneline
 - 尚未进入 `verification`：停止并说明应先完成当前阶段；
 - 当前阶段为 `failed`：遵循 `vega next --json` 的恢复路由；
 - 没有活跃需求：停止并使用 `vega-requirement-init`；
+- `vega verify --json` 失败：停止并报告 state verification 错误；不要把损坏状态归档；
 - 已进入 `archive` 或更后阶段：不要重复推进，除非用户明确要求重新验证。
+
+如果 workflow 为 `full`，执行：
+
+```bash
+vega module list --json
+```
+
+所有模块必须为 `completed`。如果存在 pending 模块，返回 `vega-implementation` 补齐对应模块，不进入质量验证结论。
 
 ### 2. 读取需求和 OpenSpec 产物
 
@@ -117,6 +128,13 @@ git ls-files --others --exclude-standard
 
 如果工作区包含与当前需求无关的大量改动，不要擅自清理；在报告中区分“本次验证范围内”和“未归属改动”。
 
+Full workflow 还要把验证范围按模块分组：
+
+- 每个模块对应的 OpenSpec tasks 是否全部完成；
+- 每个模块触达的文件、契约和测试命令；
+- 模块间依赖是否按 design 的顺序实现；
+- 已 completed 的模块是否存在后续改动导致的回归风险。
+
 ### 4. 执行命令级质量门禁
 
 优先运行设计文档或 `tasks.md` 中列出的精确命令；然后按影响面补充 Makefile 目标。
@@ -124,6 +142,7 @@ git ls-files --others --exclude-standard
 常用矩阵：
 
 ```bash
+vega verify --json
 make lint-cli
 make test-cli
 make build-cli
@@ -140,6 +159,7 @@ make e2e
 
 选择规则：
 
+- 总是先运行 `vega verify --json` 确认 harness 状态完整；
 - CLI 改动至少运行 `make lint-cli`、`make test-cli`、`make build-cli`；
 - Web 改动至少运行 `make lint-web`、`make test-web`、`make build-web`；
 - Server 改动至少运行 `make lint-server`、`make test-server`、`make build-server`；
@@ -230,6 +250,7 @@ docs/verification/<requirement-name>-verification-<YYYY-MM-DD>.md
 ## 验证范围
 - Requirement:
 - OpenSpec change:
+- Modules:
 - Verified diff:
 
 ## 命令结果
@@ -273,6 +294,8 @@ vega next --json
 完成条件：
 
 - 验证报告已保存并登记；
+- `vega verify --json` 通过；
+- Full workflow 中所有模块已完成；
 - 所有必需命令通过，或非本次范围的工具链缺口已明确记录且用户接受；
 - 没有未解决的 Critical / High 问题；
 - OpenSpec validation 通过；
@@ -291,6 +314,7 @@ vega next --json
 ## 完成标准
 
 - 验证范围清楚，命令结果有证据；
+- `vega verify --json` 通过，Full workflow 的模块状态已核对；
 - 反退化审查覆盖安全、架构、复杂度、死代码、测试质量、契约和文档；
 - 验证报告登记到 `documents.verification_report`；
 - 无未解决的 Critical / High 问题；

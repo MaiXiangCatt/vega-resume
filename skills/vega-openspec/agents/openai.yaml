@@ -1,4 +1,4 @@
 interface:
   display_name: "Vega OpenSpec"
-  short_description: "生成 Vega 需求的 OpenSpec 规约、设计与 TDD 任务"
+  short_description: "生成含 Full 模块分组的 OpenSpec 规约、设计与 TDD 任务"
   default_prompt: "使用 $vega-openspec 为当前 Vega 需求生成并登记 OpenSpec change。"

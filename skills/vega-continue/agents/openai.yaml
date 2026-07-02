@@ -1,4 +1,4 @@
 interface:
   display_name: "Vega Continue"
-  short_description: "恢复上下文并路由到当前 Vega 阶段 Skill"
+  short_description: "恢复上下文、模块状态并路由到当前 Vega 阶段 Skill"
   default_prompt: "使用 $vega-continue 继续当前 Vega 需求。"

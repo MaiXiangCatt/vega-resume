@@ -7,7 +7,7 @@ description: 恢复并继续当前 Vega 需求流程：从 `vega requirement sta
 
 `vega-continue` 是 Vega workflow 的调度 Skill。它不替代具体阶段 Skill，而是把跨 Session 的状态恢复、产物检查和下一步路由收敛到一个入口。
 
-当前 CLI 已实现 `requirement status/current/list/switch/init`、`next`、`complete`、`archive`、`fail`、`retry`、`doc set/get`。设计文档中的 `transition`、`verify`、`module` 系列命令尚未落地；本 Skill 不要求使用这些未实现命令。
+当前 CLI 已实现 `requirement status/current/list/switch/init`、`next`、`complete`、`archive`、`fail`、`retry`、`transition`、`verify`、`doc set/get`，以及 Full workflow 的 `module add/list/status/complete`。恢复上下文时必须识别 Lite / Full 差异：Lite 没有模块；Full 需要读取模块列表并把 pending / completed 状态纳入后续路由摘要。
 
 ## 硬性边界
 
@@ -58,6 +58,7 @@ git rev-parse --show-toplevel
 ```bash
 vega requirement status --json
 vega next --json
+vega verify --json
 git log -n 5 --oneline
 git status --short
 ```
@@ -68,6 +69,7 @@ git status --short
 - workflow：`lite` 或 `full`；
 - `current_phase`；
 - 当前 phase 状态；
+- Full workflow 的 `modules` 列表及各模块状态；
 - `documents` 中已登记的路径；
 - `vega next --json` 返回的 `skill` 和 `done`。
 
@@ -75,7 +77,16 @@ git status --short
 
 - 没有活跃需求：停止并提示先使用 `vega-requirement-init` 创建或切换需求。
 - 状态文件损坏或缺少当前 phase：停止，不直接修 JSON。
+- `vega verify --json` 失败：停止并报告 state verification 错误；不要绕过状态文件完整性问题继续执行阶段 Skill。
 - `done: true`：报告需求已完成，不再推进。
+
+如果 workflow 为 `full`，额外执行：
+
+```bash
+vega module list --json
+```
+
+并把结果作为模块事实源。不要在 Lite workflow 下调用 `vega module`；CLI 会拒绝该类命令。
 
 ### 3. 读取已登记产物
 
@@ -85,6 +96,7 @@ git status --short
 vega doc get prd --json
 vega doc get brainstorm --json
 vega doc get tech_design --json
+vega doc get breakdown --json
 vega doc get openspec_dir --json
 vega doc get verification_report --json
 vega doc get experience_report --json
@@ -100,9 +112,9 @@ vega doc get experience_report --json
 | `brainstorm` | `prd` |
 | `tech_design` | `prd`、`brainstorm` |
 | `breakdown` | `prd`、`brainstorm`、`tech_design` |
-| `openspec` | `prd`、`brainstorm`，full workflow 还应有 `tech_design` |
-| `implementation` | `openspec_dir` |
-| `verification` | `openspec_dir` |
+| `openspec` | `prd`、`brainstorm`，full workflow 还应有 `tech_design`、`breakdown` 和模块列表 |
+| `implementation` | `openspec_dir`；full workflow 还应读取 pending 模块 |
+| `verification` | `openspec_dir`；full workflow 还应确认模块状态 |
 | `archive` | `openspec_dir`、`verification_report` |
 | failed phase | `failed_reason`、相关阶段产物，交给 `vega-experience` |
 
@@ -141,6 +153,13 @@ vega doc get experience_report --json
 - 如果 Skill 列表没有但本仓库存在 `skills/<skill>/SKILL.md`，读取该文件并按其说明执行。
 - 如果本仓库也没有该 Skill，停止并报告需要先创建对应 Skill。
 
+Full workflow 的模块处理规则：
+
+- `breakdown` 阶段应由 `vega-breakdown` 使用 `vega module add <module-name>` 登记模块；
+- `openspec` 和 `implementation` 阶段应读取 `vega module list --json`，围绕 pending 模块组织规约和实现；
+- 某个模块完成实现与验证后，由 `vega-implementation` 调用 `vega module complete <module-name>`；
+- 不要由 `vega-continue` 自己新增、完成或修正模块状态。
+
 不要手工调用另一个阶段的 Skill。`vega next --json` 已经包含 workflow 分支，例如 Lite 的 `brainstorm -> openspec` 和 Full 的 `brainstorm -> tech_design`。
 
 ### 6. 阶段执行后的收尾
@@ -150,6 +169,7 @@ vega doc get experience_report --json
 ```bash
 vega requirement status --json
 vega next --json
+vega verify --json
 git status --short
 ```
 
@@ -158,8 +178,9 @@ git status --short
 ```text
 需求：<name> (<workflow>)
 当前阶段：<phase> / <status>
+模块：<lite: none | full: pending=[...], completed=[...]>
 下一步：<skill 或 done>
-关键产物：prd=<...>, brainstorm=<...>, openspec_dir=<...>, verification_report=<...>
+关键产物：prd=<...>, brainstorm=<...>, tech_design=<...>, breakdown=<...>, openspec_dir=<...>, verification_report=<...>
 工作区：<clean 或列出需要用户关注的改动>
 ```
 
