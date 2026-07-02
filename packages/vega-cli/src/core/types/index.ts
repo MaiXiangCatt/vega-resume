@@ -59,6 +59,11 @@ export interface NextPayload {
   done: boolean
 }
 
+export interface VerifyPayload {
+  valid: boolean
+  errors: string[]
+}
+
 export type OutputWriter = (value: string) => void
 
 export interface CommandRunnerOptions {

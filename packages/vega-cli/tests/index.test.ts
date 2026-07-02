@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -184,6 +184,54 @@ describe('vega CLI core commands', () => {
     }
   })
 
+  it('transitions to the next phase and rejects out-of-order transitions without force', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+
+    expect(await run(['transition', 'implementation'], cwd)).toEqual({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'Error: Phase "implementation" is not the next phase after "init".\n',
+    })
+    expect(await run(['transition', 'brainstorm'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Transitioned to phase "brainstorm".\n',
+      stderr: '',
+    })
+
+    const state = JSON.parse(await readFile(join(cwd, '.vega-harness', 'requirements', 'resume-editor.json'), 'utf8'))
+    expect(state.current_phase).toBe('brainstorm')
+    expect(state.phases.init).toMatchObject({
+      status: 'completed',
+      completed_at: '2026-06-01T00:00:00.000Z',
+    })
+    expect(state.phases.brainstorm).toEqual({ status: 'in_progress' })
+  })
+
+  it('force transitions to any phase in the active workflow', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+    await run(['fail', '--reason', 'manual recovery'], cwd)
+
+    expect(await run(['transition', 'implementation', '--force'], cwd)).toMatchObject({
+      exitCode: 0,
+      stdout: 'Transitioned to phase "implementation".\n',
+      stderr: '',
+    })
+
+    expect(JSON.parse((await run(['next', '--json'], cwd)).stdout)).toMatchObject({
+      phase: 'implementation',
+      status: 'in_progress',
+      skill: 'vega-implementation',
+    })
+    expect(JSON.parse((await run(['verify', '--json'], cwd)).stdout)).toEqual({
+      valid: true,
+      errors: [],
+    })
+  })
+
   it('can list, switch, and report the active requirement', async () => {
     const cwd = await createWorkspace()
 
@@ -320,6 +368,39 @@ describe('vega CLI core commands', () => {
     })
   })
 
+  it('verifies valid and invalid active requirement state', async () => {
+    const cwd = await createWorkspace()
+
+    await run(['requirement', 'init', 'resume-editor'], cwd)
+
+    expect(await run(['verify'], cwd)).toEqual({
+      exitCode: 0,
+      stdout: 'State is valid.\n',
+      stderr: '',
+    })
+    expect(JSON.parse((await run(['verify', '--json'], cwd)).stdout)).toEqual({
+      valid: true,
+      errors: [],
+    })
+
+    const statePath = join(cwd, '.vega-harness', 'requirements', 'resume-editor.json')
+    const state = JSON.parse(await readFile(statePath, 'utf8'))
+    delete state.phases.init
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`)
+
+    const result = await run(['verify', '--json'], cwd)
+
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stdout)).toEqual({
+      valid: false,
+      errors: [
+        'Missing phase "init".',
+        'In-progress requirements must have exactly one in-progress phase matching current_phase.',
+      ],
+    })
+    expect(result.stderr).toBe('Error: State verification failed.\n')
+  })
+
   it('routes failed phases to experience and lets retry resume the current phase', async () => {
     const cwd = await createWorkspace()
 
@@ -335,6 +416,10 @@ describe('vega CLI core commands', () => {
       status: 'failed',
       skill: 'vega-experience',
       done: false,
+    })
+    expect(JSON.parse((await run(['verify', '--json'], cwd)).stdout)).toEqual({
+      valid: true,
+      errors: [],
     })
 
     expect(await run(['retry'], cwd)).toMatchObject({
