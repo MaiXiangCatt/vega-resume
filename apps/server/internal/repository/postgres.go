@@ -288,6 +288,19 @@ func (s *GormStore) SetResumeAvatar(ctx context.Context, userID, resumeID uuid.U
 	return nil
 }
 
+func (s *GormStore) SetResumeSchoolLogo(ctx context.Context, userID, resumeID uuid.UUID, schoolLogoKey *string) error {
+	result := s.db.WithContext(ctx).Model(&model.Resume{}).
+		Where("id = ? AND user_id = ?", resumeID, userID).
+		Updates(map[string]any{"school_logo_key": schoolLogoKey, "updated_at": time.Now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *GormStore) IncrementResumeExport(ctx context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error {
 	result := s.db.WithContext(ctx).Model(&model.Resume{}).
 		Where("id = ? AND user_id = ?", resumeID, userID).

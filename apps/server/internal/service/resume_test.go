@@ -8,7 +8,9 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -158,6 +160,57 @@ func jpegAvatar(t *testing.T, width, height int) []byte {
 	var output bytes.Buffer
 	if err := jpeg.Encode(&output, canvas, &jpeg.Options{Quality: 82}); err != nil {
 		t.Fatalf("encode avatar: %v", err)
+	}
+	return output.Bytes()
+}
+
+func TestResumeServiceSchoolLogoIsolationCopyAndCleanup(t *testing.T) {
+	ctx := context.Background()
+	assetDir := t.TempDir()
+	resumes := service.NewResumeService(service.ResumeServiceConfig{Resumes: repository.NewMemoryStore(), AvatarDir: assetDir})
+	ownerID, otherID := uuid.New(), uuid.New()
+	created, err := resumes.Create(ctx, ownerID, "School logo")
+	if err != nil {
+		t.Fatalf("create resume: %v", err)
+	}
+	logo := pngSchoolLogo(t, service.SchoolLogoWidth, service.SchoolLogoHeight)
+	withLogo, err := resumes.PutSchoolLogo(ctx, ownerID, created.ID, logo)
+	if err != nil || withLogo.SchoolLogoKey == nil {
+		t.Fatalf("put school logo: resume=%+v err=%v", withLogo, err)
+	}
+	if _, err := resumes.GetSchoolLogo(ctx, otherID, created.ID); !errors.Is(err, model.ErrResumeNotFound) {
+		t.Fatalf("cross-user school logo must look missing, got %v", err)
+	}
+	copied, err := resumes.Copy(ctx, ownerID, created.ID)
+	if err != nil || copied.SchoolLogoKey == nil {
+		t.Fatalf("copy school logo: resume=%+v err=%v", copied, err)
+	}
+	if copiedLogo, err := resumes.GetSchoolLogo(ctx, ownerID, copied.ID); err != nil || !bytes.Equal(copiedLogo, logo) {
+		t.Fatalf("copied school logo mismatch: len=%d err=%v", len(copiedLogo), err)
+	}
+	originalPath := filepath.Join(assetDir, filepath.FromSlash(*withLogo.SchoolLogoKey))
+	if err := resumes.Delete(ctx, ownerID, created.ID); err != nil {
+		t.Fatalf("delete resume: %v", err)
+	}
+	if _, err := os.Stat(originalPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("school logo file should be removed, stat err=%v", err)
+	}
+	if _, err := resumes.PutSchoolLogo(ctx, ownerID, copied.ID, pngSchoolLogo(t, 300, 300)); !errors.Is(err, model.ErrSchoolLogoInvalid) {
+		t.Fatalf("non-500x500 school logo should be rejected, got %v", err)
+	}
+}
+
+func pngSchoolLogo(t *testing.T, width, height int) []byte {
+	t.Helper()
+	canvas := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			canvas.Set(x, y, color.RGBA{R: 132, G: 4, B: 119, A: 128})
+		}
+	}
+	var output bytes.Buffer
+	if err := png.Encode(&output, canvas); err != nil {
+		t.Fatalf("encode school logo: %v", err)
 	}
 	return output.Bytes()
 }

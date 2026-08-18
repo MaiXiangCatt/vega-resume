@@ -23,7 +23,7 @@ test('anonymous analytics requires consent, persists choice, records milestones 
   });
 
   await page.goto('/local');
-  const prompt = page.getByRole('dialog', { name: '帮我们了解功能是否真的有用' });
+  const prompt = page.getByRole('dialog', { name: '匿名使用统计' });
   await expect(prompt).toBeVisible();
   expect(events).toHaveLength(0);
 
@@ -34,7 +34,7 @@ test('anonymous analytics requires consent, persists choice, records milestones 
   expect(events).toHaveLength(0);
 
   await page.getByRole('button', { name: '隐私设置' }).click();
-  const settings = page.getByRole('dialog', { name: '匿名统计与隐私' });
+  const settings = page.getByRole('dialog', { name: '匿名统计设置' });
   await settings.getByRole('button', { name: '同意匿名统计' }).click();
   await expect(settings).not.toBeVisible();
   await expect
@@ -49,6 +49,8 @@ test('anonymous analytics requires consent, persists choice, records milestones 
   await page.getByRole('menuitem', { name: '隐私设置' }).click();
   await settings.getByRole('button', { name: '退出匿名统计' }).click();
   await expect.poll(() => deletions).toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await expect(settings).not.toBeVisible();
 
   const eventCountAfterWithdrawal = events.length;
   const downloadPromise = page.waitForEvent('download');

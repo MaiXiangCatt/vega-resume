@@ -28,5 +28,10 @@ export interface ImportResumeRequest {
      * @nullable
      */
   avatar?: string | null;
+  /**
+     * @maxLength 750000
+     * @nullable
+     */
+  schoolLogo?: string | null;
   content: ResumeContent;
 }

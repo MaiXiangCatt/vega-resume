@@ -7,7 +7,12 @@ import { printService } from '../service/print.service';
 
 type PrintState =
   | { status: 'loading' }
-  | { status: 'ready'; document: ResumeDocument; avatar: string | null }
+  | {
+      status: 'ready';
+      document: ResumeDocument;
+      avatar: string | null;
+      schoolLogo: string | null;
+    }
   | { status: 'error'; message: string };
 
 export function PrintResumePage({ resumeId, token }: { resumeId: string; token: string }) {
@@ -17,8 +22,8 @@ export function PrintResumePage({ resumeId, token }: { resumeId: string; token: 
     let cancelled = false;
     printService
       .getPrintData(resumeId, token)
-      .then(({ document: doc, avatar }) => {
-        if (!cancelled) setState({ status: 'ready', document: doc, avatar });
+      .then(({ document: doc, avatar, schoolLogo }) => {
+        if (!cancelled) setState({ status: 'ready', document: doc, avatar, schoolLogo });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -75,7 +80,12 @@ export function PrintResumePage({ resumeId, token }: { resumeId: string; token: 
         @page { size: A4; margin: ${margin.top}px ${margin.right}px ${margin.bottom}px ${margin.left}px; }
         html, body, #root { background: #fff !important; }
       `}</style>
-      <ResumeHtmlPreview avatar={state.avatar} mode="print" resume={state.document} />
+      <ResumeHtmlPreview
+        avatar={state.avatar}
+        mode="print"
+        resume={state.document}
+        schoolLogo={state.schoolLogo}
+      />
     </>
   );
 }

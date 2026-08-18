@@ -217,6 +217,7 @@ export const resumeContentSchema = createContentSchema(
 );
 
 const avatar = z.string().startsWith('data:image/jpeg;base64,').max(750_000).nullish();
+const schoolLogo = z.string().startsWith('data:image/png;base64,').max(750_000).nullish();
 
 export const importEnvelopeSchema = z.union([
   z
@@ -243,6 +244,7 @@ export const importEnvelopeSchema = z.union([
       title: z.string().trim().min(1).max(80),
       profileAlignment: z.enum(['left', 'center', 'right']),
       avatar,
+      schoolLogo,
       content: resumeContentSchema,
     })
     .strict(),

@@ -1630,6 +1630,186 @@ export const deleteResumeAvatar = async (resumeId: string, options?: RequestInit
 
 
 
+export type getResumeSchoolLogoResponse200 = {
+  data: Blob
+  status: 200
+}
+
+export type getResumeSchoolLogoResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getResumeSchoolLogoResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getResumeSchoolLogoResponseSuccess = (getResumeSchoolLogoResponse200) & {
+  headers: Headers;
+};
+export type getResumeSchoolLogoResponseError = (getResumeSchoolLogoResponse401 | getResumeSchoolLogoResponse404) & {
+  headers: Headers;
+};
+
+export type getResumeSchoolLogoResponse = (getResumeSchoolLogoResponseSuccess | getResumeSchoolLogoResponseError)
+
+export const getGetResumeSchoolLogoUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/school-logo`
+}
+
+/**
+ * @summary Get the current resume school logo
+ */
+export const getResumeSchoolLogo = async (resumeId: string, options?: RequestInit): Promise<getResumeSchoolLogoResponse> => {
+
+  const res = await fetch(getGetResumeSchoolLogoUrl(resumeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.blob();
+  const data: getResumeSchoolLogoResponse['data'] = body as getResumeSchoolLogoResponse['data']
+  return { data, status: res.status, headers: res.headers } as getResumeSchoolLogoResponse
+}
+
+
+
+export type putResumeSchoolLogoResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type putResumeSchoolLogoResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type putResumeSchoolLogoResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type putResumeSchoolLogoResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type putResumeSchoolLogoResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type putResumeSchoolLogoResponseSuccess = (putResumeSchoolLogoResponse200) & {
+  headers: Headers;
+};
+export type putResumeSchoolLogoResponseError = (putResumeSchoolLogoResponse400 | putResumeSchoolLogoResponse401 | putResumeSchoolLogoResponse404 | putResumeSchoolLogoResponse500) & {
+  headers: Headers;
+};
+
+export type putResumeSchoolLogoResponse = (putResumeSchoolLogoResponseSuccess | putResumeSchoolLogoResponseError)
+
+export const getPutResumeSchoolLogoUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/school-logo`
+}
+
+/**
+ * @summary Replace the current resume school logo
+ */
+export const putResumeSchoolLogo = async (resumeId: string,
+    putResumeSchoolLogoBody: Blob, options?: RequestInit): Promise<putResumeSchoolLogoResponse> => {
+
+  const res = await fetch(getPutResumeSchoolLogoUrl(resumeId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png', ...options?.headers },
+    body: putResumeSchoolLogoBody
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: putResumeSchoolLogoResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as putResumeSchoolLogoResponse
+}
+
+
+
+export type deleteResumeSchoolLogoResponse200 = {
+  data: ResumeDetailResponse
+  status: 200
+}
+
+export type deleteResumeSchoolLogoResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type deleteResumeSchoolLogoResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type deleteResumeSchoolLogoResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type deleteResumeSchoolLogoResponseSuccess = (deleteResumeSchoolLogoResponse200) & {
+  headers: Headers;
+};
+export type deleteResumeSchoolLogoResponseError = (deleteResumeSchoolLogoResponse401 | deleteResumeSchoolLogoResponse404 | deleteResumeSchoolLogoResponse500) & {
+  headers: Headers;
+};
+
+export type deleteResumeSchoolLogoResponse = (deleteResumeSchoolLogoResponseSuccess | deleteResumeSchoolLogoResponseError)
+
+export const getDeleteResumeSchoolLogoUrl = (resumeId: string,) => {
+
+
+
+
+  return `/api/resumes/${resumeId}/school-logo`
+}
+
+/**
+ * @summary Delete the current resume school logo
+ */
+export const deleteResumeSchoolLogo = async (resumeId: string, options?: RequestInit): Promise<deleteResumeSchoolLogoResponse> => {
+
+  const res = await fetch(getDeleteResumeSchoolLogoUrl(resumeId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteResumeSchoolLogoResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteResumeSchoolLogoResponse
+}
+
+
+
 export type getAnalyticsConfigResponse200 = {
   data: AnalyticsConfig
   status: 200

@@ -140,6 +140,7 @@ export function parseImportEnvelope(value: unknown): ResumeImportEnvelope {
         : envelope.profileAlignment,
     content: parseResumeContent(envelope.content, envelope.version),
     avatar: envelope.avatar,
+    schoolLogo: null,
   };
 }
 
@@ -220,9 +221,14 @@ export function moveById<T extends { id: string }>(items: T[], activeId: string,
   return next;
 }
 
-export function completionIssues(content: ResumeContentV4, hasAvatar = false) {
+export function completionIssues(
+  content: ResumeContentV4,
+  hasAvatar = false,
+  hasSchoolLogo = false,
+) {
   const issues: string[] = [];
   if (content.profile.enabled && !content.profile.fullName.trim()) issues.push('请填写姓名');
-  if (!resumeHasPrintableContent(content, hasAvatar)) issues.push('请至少显示一项有内容的模块');
+  if (!resumeHasPrintableContent(content, hasAvatar, hasSchoolLogo))
+    issues.push('请至少显示一项有内容的模块');
   return issues;
 }

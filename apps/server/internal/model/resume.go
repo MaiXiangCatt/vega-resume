@@ -60,6 +60,7 @@ type Resume struct {
 	ContentJSON    JSONDocument   `gorm:"type:jsonb;not null"`
 	Revision       int64          `gorm:"not null;default:1"`
 	AvatarKey      *string        `gorm:"type:varchar(160)"`
+	SchoolLogoKey  *string        `gorm:"type:varchar(160)"`
 	ExportCount    int64          `gorm:"not null;default:0"`
 	CreatedAt      time.Time      `gorm:"not null;autoCreateTime"`
 	UpdatedAt      time.Time      `gorm:"not null;autoUpdateTime;index:idx_resumes_user_updated,priority:2,sort:desc"`

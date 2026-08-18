@@ -56,6 +56,7 @@ type ImportResumeInput struct {
 	TemplateID       *string
 	Content          map[string]any
 	Avatar           *string
+	SchoolLogo       *string
 	ExpectedRevision *int64
 }
 
@@ -128,22 +129,35 @@ func (s *ResumeService) Import(ctx context.Context, userID uuid.UUID, input Impo
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
+	var avatarBytes, schoolLogoBytes []byte
+	if input.Avatar != nil && *input.Avatar != "" {
+		avatarBytes, err = DecodeAvatarDataURL(*input.Avatar)
+		if err != nil {
+			return nil, model.ErrResumeInvalidSchema
+		}
+	}
+	if input.SchoolLogo != nil && *input.SchoolLogo != "" {
+		schoolLogoBytes, err = DecodeSchoolLogoDataURL(*input.SchoolLogo)
+		if err != nil {
+			return nil, model.ErrResumeInvalidSchema
+		}
+	}
 	if err := s.resumes.CreateResume(ctx, resume); err != nil {
 		return nil, model.ErrDBError
 	}
-	if input.Avatar != nil && *input.Avatar != "" {
-		avatarBytes, decodeErr := DecodeAvatarDataURL(*input.Avatar)
-		if decodeErr != nil {
-			_ = s.resumes.DeleteResume(ctx, userID, resume.ID)
-			return nil, model.ErrResumeInvalidSchema
-		}
+	if len(avatarBytes) > 0 {
 		if _, putErr := s.PutAvatar(ctx, userID, resume.ID, avatarBytes); putErr != nil {
-			_ = s.resumes.DeleteResume(ctx, userID, resume.ID)
+			_ = s.Delete(ctx, userID, resume.ID)
 			return nil, putErr
 		}
-		return s.Get(ctx, userID, resume.ID)
 	}
-	return resume, nil
+	if len(schoolLogoBytes) > 0 {
+		if _, putErr := s.PutSchoolLogo(ctx, userID, resume.ID, schoolLogoBytes); putErr != nil {
+			_ = s.Delete(ctx, userID, resume.ID)
+			return nil, putErr
+		}
+	}
+	return s.Get(ctx, userID, resume.ID)
 }
 
 func (s *ResumeService) Get(ctx context.Context, userID, resumeID uuid.UUID) (*model.Resume, error) {
@@ -300,13 +314,20 @@ func (s *ResumeService) Copy(ctx context.Context, userID, resumeID uuid.UUID) (*
 	if source.AvatarKey != nil {
 		if avatar, avatarErr := s.avatars.Read(*source.AvatarKey); avatarErr == nil {
 			if _, putErr := s.PutAvatar(ctx, userID, copy.ID, avatar); putErr != nil {
-				_ = s.resumes.DeleteResume(ctx, userID, copy.ID)
+				_ = s.Delete(ctx, userID, copy.ID)
 				return nil, putErr
 			}
-			return s.Get(ctx, userID, copy.ID)
 		}
 	}
-	return copy, nil
+	if source.SchoolLogoKey != nil {
+		if schoolLogo, schoolLogoErr := s.avatars.Read(*source.SchoolLogoKey); schoolLogoErr == nil {
+			if _, putErr := s.PutSchoolLogo(ctx, userID, copy.ID, schoolLogo); putErr != nil {
+				_ = s.Delete(ctx, userID, copy.ID)
+				return nil, putErr
+			}
+		}
+	}
+	return s.Get(ctx, userID, copy.ID)
 }
 
 func (s *ResumeService) Delete(ctx context.Context, userID, resumeID uuid.UUID) error {
@@ -322,6 +343,9 @@ func (s *ResumeService) Delete(ctx context.Context, userID, resumeID uuid.UUID) 
 	if resume.AvatarKey != nil {
 		_ = s.avatars.Delete(*resume.AvatarKey)
 	}
+	if resume.SchoolLogoKey != nil {
+		_ = s.avatars.Delete(*resume.SchoolLogoKey)
+	}
 	return nil
 }
 
@@ -332,10 +356,17 @@ func (s *ResumeService) ReplaceImport(ctx context.Context, userID, resumeID uuid
 	if _, err := normalizeContentForWrite(input.Content, input.Version); err != nil {
 		return nil, model.ErrResumeInvalidSchema
 	}
-	var avatarBytes []byte
+	var avatarBytes, schoolLogoBytes []byte
 	if input.Avatar != nil && *input.Avatar != "" {
 		var err error
 		avatarBytes, err = DecodeAvatarDataURL(*input.Avatar)
+		if err != nil {
+			return nil, model.ErrResumeInvalidSchema
+		}
+	}
+	if input.SchoolLogo != nil && *input.SchoolLogo != "" {
+		var err error
+		schoolLogoBytes, err = DecodeSchoolLogoDataURL(*input.SchoolLogo)
 		if err != nil {
 			return nil, model.ErrResumeInvalidSchema
 		}
@@ -352,10 +383,22 @@ func (s *ResumeService) ReplaceImport(ctx context.Context, userID, resumeID uuid
 		return nil, err
 	}
 	if input.Avatar == nil || *input.Avatar == "" {
-		return s.DeleteAvatar(ctx, userID, resumeID)
+		if _, err := s.DeleteAvatar(ctx, userID, resumeID); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err := s.PutAvatar(ctx, userID, resumeID, avatarBytes); err != nil {
+			return nil, err
+		}
 	}
-	if _, err := s.PutAvatar(ctx, userID, resumeID, avatarBytes); err != nil {
-		return nil, err
+	if input.SchoolLogo == nil || *input.SchoolLogo == "" {
+		if _, err := s.DeleteSchoolLogo(ctx, userID, resumeID); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err := s.PutSchoolLogo(ctx, userID, resumeID, schoolLogoBytes); err != nil {
+			return nil, err
+		}
 	}
 	return s.Get(ctx, userID, updated.ID)
 }

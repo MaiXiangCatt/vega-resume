@@ -25,6 +25,7 @@ type Listener = () => void;
 
 class LocalResumeStore {
   private avatars = new Map<string, Blob>();
+  private schoolLogos = new Map<string, Blob>();
   private documents = new Map<string, ResumeDocument>();
   private initialized = false;
   private listeners = new Set<Listener>();
@@ -67,6 +68,7 @@ class LocalResumeStore {
     await localResumeService.clear();
     this.documents.clear();
     this.avatars.clear();
+    this.schoolLogos.clear();
     this.initialized = false;
     this.setAvailability('idle', null);
   }
@@ -90,13 +92,17 @@ class LocalResumeStore {
     return summarizeDocuments(this.documents.values());
   }
 
-  async get(resumeId: string): Promise<{ avatar: Blob | null; document: ResumeDocument }> {
+  async get(resumeId: string): Promise<{
+    avatar: Blob | null;
+    schoolLogo: Blob | null;
+    document: ResumeDocument;
+  }> {
     if (this.snapshot.availability === 'read-only') {
       return this.cachedResume(resumeId);
     }
     try {
       const result = await localResumeService.get(resumeId);
-      this.remember(result.document, result.avatar);
+      this.remember(result.document, result.avatar, result.schoolLogo);
       this.initialized = true;
       this.setAvailability('persistent', null);
       return cloneResult(result);
@@ -112,20 +118,24 @@ class LocalResumeStore {
     }
   }
 
-  cachedSnapshot(resumeId: string): { avatar: Blob | null; document: ResumeDocument } {
+  cachedSnapshot(resumeId: string): {
+    avatar: Blob | null;
+    schoolLogo: Blob | null;
+    document: ResumeDocument;
+  } {
     return this.cachedResume(resumeId);
   }
 
   async reconnect(
     resumeId: string,
     expectedRevision: number,
-  ): Promise<{ avatar: Blob | null; document: ResumeDocument }> {
+  ): Promise<{ avatar: Blob | null; schoolLogo: Blob | null; document: ResumeDocument }> {
     try {
       const result = await localResumeService.get(resumeId);
       if (result.document.revision !== expectedRevision) {
         throw new LocalResumeConflictError();
       }
-      this.remember(result.document, result.avatar);
+      this.remember(result.document, result.avatar, result.schoolLogo);
       this.initialized = true;
       this.setAvailability('persistent', null);
       return cloneResult(result);
@@ -139,7 +149,7 @@ class LocalResumeStore {
   async create(title?: string): Promise<ResumeDocument> {
     return this.runWrite(
       () => localResumeService.create(title),
-      async (document) => this.remember(document, null),
+      async (document) => this.remember(document, null, null),
     );
   }
 
@@ -147,14 +157,23 @@ class LocalResumeStore {
     return this.runWrite(
       () => localResumeService.import(envelope),
       async (document) =>
-        this.remember(document, envelope.avatar ? dataUrlToBlob(envelope.avatar) : null),
+        this.remember(
+          document,
+          envelope.avatar ? dataUrlToBlob(envelope.avatar) : null,
+          envelope.schoolLogo ? dataUrlToBlob(envelope.schoolLogo) : null,
+        ),
     );
   }
 
   async copy(resumeId: string): Promise<ResumeDocument> {
     return this.runWrite(
       () => localResumeService.copy(resumeId),
-      async (document) => this.remember(document, this.avatars.get(resumeId) ?? null),
+      async (document) =>
+        this.remember(
+          document,
+          this.avatars.get(resumeId) ?? null,
+          this.schoolLogos.get(resumeId) ?? null,
+        ),
     );
   }
 
@@ -165,7 +184,12 @@ class LocalResumeStore {
   ): Promise<ResumeDocument> {
     return this.runWrite(
       () => localResumeService.updateTitle(resumeId, expectedRevision, title),
-      async (document) => this.remember(document, this.avatars.get(resumeId) ?? null),
+      async (document) =>
+        this.remember(
+          document,
+          this.avatars.get(resumeId) ?? null,
+          this.schoolLogos.get(resumeId) ?? null,
+        ),
     );
   }
 
@@ -175,6 +199,7 @@ class LocalResumeStore {
       async () => {
         this.documents.delete(resumeId);
         this.avatars.delete(resumeId);
+        this.schoolLogos.delete(resumeId);
         this.emit();
       },
     );
@@ -184,11 +209,20 @@ class LocalResumeStore {
     try {
       return await this.runWrite(
         () => localResumeService.save(document, expectedRevision),
-        async (saved) => this.remember(saved, this.avatars.get(document.id) ?? null),
+        async (saved) =>
+          this.remember(
+            saved,
+            this.avatars.get(document.id) ?? null,
+            this.schoolLogos.get(document.id) ?? null,
+          ),
       );
     } catch (error) {
       if (error instanceof LocalResumeStorageError) {
-        this.remember(document, this.avatars.get(document.id) ?? null);
+        this.remember(
+          document,
+          this.avatars.get(document.id) ?? null,
+          this.schoolLogos.get(document.id) ?? null,
+        );
       }
       throw error;
     }
@@ -197,7 +231,12 @@ class LocalResumeStore {
   async overwrite(document: ResumeDocument): Promise<ResumeDocument> {
     return this.runWrite(
       () => localResumeService.overwrite(document),
-      async (saved) => this.remember(saved, this.avatars.get(document.id) ?? null),
+      async (saved) =>
+        this.remember(
+          saved,
+          this.avatars.get(document.id) ?? null,
+          this.schoolLogos.get(document.id) ?? null,
+        ),
     );
   }
 
@@ -209,7 +248,11 @@ class LocalResumeStore {
     return this.runWrite(
       () => localResumeService.replaceImport(resumeId, expectedRevision, envelope),
       async (document) =>
-        this.remember(document, envelope.avatar ? dataUrlToBlob(envelope.avatar) : null),
+        this.remember(
+          document,
+          envelope.avatar ? dataUrlToBlob(envelope.avatar) : null,
+          envelope.schoolLogo ? dataUrlToBlob(envelope.schoolLogo) : null,
+        ),
     );
   }
 
@@ -217,11 +260,15 @@ class LocalResumeStore {
     try {
       return await this.runWrite(
         () => localResumeService.putAvatar(document, avatar),
-        async (saved) => this.remember(saved, avatar),
+        async (saved) => this.remember(saved, avatar, this.schoolLogos.get(document.id) ?? null),
       );
     } catch (error) {
       if (error instanceof LocalResumeStorageError) {
-        this.remember({ ...document, hasAvatar: true }, avatar);
+        this.remember(
+          { ...document, hasAvatar: true },
+          avatar,
+          this.schoolLogos.get(document.id) ?? null,
+        );
       }
       throw error;
     }
@@ -231,11 +278,51 @@ class LocalResumeStore {
     try {
       return await this.runWrite(
         () => localResumeService.deleteAvatar(document),
-        async (saved) => this.remember(saved, null),
+        async (saved) => this.remember(saved, null, this.schoolLogos.get(document.id) ?? null),
       );
     } catch (error) {
       if (error instanceof LocalResumeStorageError) {
-        this.remember({ ...document, hasAvatar: false }, null);
+        this.remember(
+          { ...document, hasAvatar: false },
+          null,
+          this.schoolLogos.get(document.id) ?? null,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async putSchoolLogo(document: ResumeDocument, schoolLogo: Blob): Promise<ResumeDocument> {
+    try {
+      return await this.runWrite(
+        () => localResumeService.putSchoolLogo(document, schoolLogo),
+        async (saved) => this.remember(saved, this.avatars.get(document.id) ?? null, schoolLogo),
+      );
+    } catch (error) {
+      if (error instanceof LocalResumeStorageError) {
+        this.remember(
+          { ...document, hasSchoolLogo: true },
+          this.avatars.get(document.id) ?? null,
+          schoolLogo,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async deleteSchoolLogo(document: ResumeDocument): Promise<ResumeDocument> {
+    try {
+      return await this.runWrite(
+        () => localResumeService.deleteSchoolLogo(document),
+        async (saved) => this.remember(saved, this.avatars.get(document.id) ?? null, null),
+      );
+    } catch (error) {
+      if (error instanceof LocalResumeStorageError) {
+        this.remember(
+          { ...document, hasSchoolLogo: false },
+          this.avatars.get(document.id) ?? null,
+          null,
+        );
       }
       throw error;
     }
@@ -244,7 +331,12 @@ class LocalResumeStore {
   async recordExport(resumeId: string): Promise<ResumeDocument> {
     return this.runWrite(
       () => localResumeService.recordExport(resumeId),
-      async (document) => this.remember(document, this.avatars.get(resumeId) ?? null),
+      async (document) =>
+        this.remember(
+          document,
+          this.avatars.get(resumeId) ?? null,
+          this.schoolLogos.get(resumeId) ?? null,
+        ),
     );
   }
 
@@ -264,19 +356,26 @@ class LocalResumeStore {
     }
   }
 
-  private cachedResume(resumeId: string): { avatar: Blob | null; document: ResumeDocument } {
+  private cachedResume(resumeId: string): {
+    avatar: Blob | null;
+    schoolLogo: Blob | null;
+    document: ResumeDocument;
+  } {
     const document = this.documents.get(resumeId);
     if (!document) throw new Error('这份本地简历不存在或已被删除');
     return {
       avatar: this.avatars.get(resumeId) ?? null,
+      schoolLogo: this.schoolLogos.get(resumeId) ?? null,
       document: structuredClone(document),
     };
   }
 
-  private remember(document: ResumeDocument, avatar: Blob | null): void {
+  private remember(document: ResumeDocument, avatar: Blob | null, schoolLogo: Blob | null): void {
     this.documents.set(document.id, structuredClone(document));
     if (avatar) this.avatars.set(document.id, avatar);
     else this.avatars.delete(document.id);
+    if (schoolLogo) this.schoolLogos.set(document.id, schoolLogo);
+    else this.schoolLogos.delete(document.id);
     this.emit();
   }
 
@@ -285,6 +384,7 @@ class LocalResumeStore {
       [...library.documents].map(([id, document]) => [id, structuredClone(document)]),
     );
     this.avatars = new Map(library.avatars);
+    this.schoolLogos = new Map(library.schoolLogos);
     this.emit();
   }
 
@@ -312,12 +412,18 @@ class LocalResumeStore {
   }
 }
 
-function cloneResult(result: { avatar: Blob | null; document: ResumeDocument }): {
+function cloneResult(result: {
   avatar: Blob | null;
+  schoolLogo: Blob | null;
+  document: ResumeDocument;
+}): {
+  avatar: Blob | null;
+  schoolLogo: Blob | null;
   document: ResumeDocument;
 } {
   return {
     avatar: result.avatar,
+    schoolLogo: result.schoolLogo,
     document: structuredClone(result.document),
   };
 }

@@ -114,6 +114,7 @@ export type ResumeDocument = {
   status: ResumeStatus;
   revision: number;
   hasAvatar: boolean;
+  hasSchoolLogo: boolean;
   profileAlignment: ProfileAlignment;
   exportCount: number;
   contentVersion: 4;
@@ -128,6 +129,7 @@ export type ResumeImportEnvelope = {
   profileAlignment: ProfileAlignment;
   content: ResumeContentV4;
   avatar?: string | null;
+  schoolLogo?: string | null;
 };
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'failed' | 'conflict';

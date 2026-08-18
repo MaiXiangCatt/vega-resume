@@ -17,12 +17,14 @@ import { ResumeMarkdownHtml } from './ResumeMarkdownHtml';
 
 type ResumeHtmlPreviewProps = {
   avatar: string | null;
+  schoolLogo?: string | null;
   resume: ResumeDocument;
   mode?: 'screen' | 'print';
 };
 
 export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   avatar,
+  schoolLogo = null,
   resume,
   mode = 'screen',
 }: ResumeHtmlPreviewProps) {
@@ -31,12 +33,19 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   const profile = resume.content.profile;
   const profileAlignment = resume.profileAlignment;
   const visibleAvatar = profile.enabled ? avatar : null;
+  const visibleSchoolLogo = profile.enabled ? schoolLogo : null;
   const accent = resolveAccentColor(formatting.accentColor);
   const presentation = createResumePresentation(formatting, profileAlignment);
-  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(visibleAvatar);
-  const hasSideAvatar = Boolean(visibleAvatar) && !hasCenteredAvatar;
-  const avatarOnLeft = profileAlignment === 'right' && hasSideAvatar;
-  const hasPrintableProfile = profileHasPrintableContent(profile, Boolean(visibleAvatar));
+  const hasMedia = Boolean(visibleAvatar || visibleSchoolLogo);
+  const hasCenteredMedia = profileAlignment === 'center' && hasMedia;
+  const hasSideMedia = hasMedia && !hasCenteredMedia;
+  const avatarOnLeft = profileAlignment === 'right';
+  const schoolLogoOnLeft = !avatarOnLeft;
+  const hasPrintableProfile = profileHasPrintableContent(
+    profile,
+    Boolean(visibleAvatar),
+    Boolean(visibleSchoolLogo),
+  );
   const printableSections = resume.content.sections.filter(sectionHasPrintableContent);
   const style = {
     '--resume-accent': accent,
@@ -79,12 +88,12 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
           <header
             className={cn(
               'flex',
-              hasCenteredAvatar && 'relative flex-col',
-              hasSideAvatar && 'flex-row items-start justify-between',
-              !visibleAvatar && 'flex-col',
+              hasCenteredMedia && 'relative flex-col',
+              hasSideMedia && 'flex-row items-start justify-between',
+              !hasMedia && 'flex-col',
             )}
             style={{
-              minHeight: hasCenteredAvatar
+              minHeight: hasMedia
                 ? presentation.photoHeightPx + presentation.headerPaddingBottomPx
                 : undefined,
               paddingBottom: presentation.headerPaddingBottomPx,
@@ -101,12 +110,25 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                   width: presentation.photoWidthPx,
                 }}
               />
+            ) : visibleSchoolLogo && schoolLogoOnLeft ? (
+              <img
+                alt=""
+                className={cn('shrink-0 object-contain', hasCenteredMedia && 'absolute left-0')}
+                src={visibleSchoolLogo}
+                style={{
+                  height: presentation.schoolLogoHeightPx,
+                  marginRight: hasCenteredMedia ? undefined : presentation.photoGapPx,
+                  top: hasCenteredMedia ? presentation.schoolLogoOffsetTopPx : undefined,
+                  marginTop: hasCenteredMedia ? undefined : presentation.schoolLogoOffsetTopPx,
+                  width: presentation.schoolLogoWidthPx,
+                }}
+              />
             ) : null}
             <div
-              className={cn('min-w-0', hasCenteredAvatar ? 'w-full' : 'flex-1')}
+              className={cn('min-w-0', hasCenteredMedia ? 'w-full' : 'flex-1')}
               style={{
-                paddingLeft: hasCenteredAvatar ? presentation.profileAvatarInsetPx : undefined,
-                paddingRight: hasCenteredAvatar ? presentation.profileAvatarInsetPx : undefined,
+                paddingLeft: hasCenteredMedia ? presentation.profileAvatarInsetPx : undefined,
+                paddingRight: hasCenteredMedia ? presentation.profileAvatarInsetPx : undefined,
                 textAlign: presentation.profileTextAlign,
               }}
             >
@@ -172,13 +194,26 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                 alt=""
                 className={cn(
                   'shrink-0 object-contain',
-                  hasCenteredAvatar && 'absolute right-0 top-0',
+                  hasCenteredMedia && 'absolute right-0 top-0',
                 )}
                 src={visibleAvatar}
                 style={{
                   height: presentation.photoHeightPx,
-                  marginLeft: hasCenteredAvatar ? undefined : presentation.photoGapPx,
+                  marginLeft: hasCenteredMedia ? undefined : presentation.photoGapPx,
                   width: presentation.photoWidthPx,
+                }}
+              />
+            ) : visibleSchoolLogo && !schoolLogoOnLeft ? (
+              <img
+                alt=""
+                className={cn('shrink-0 object-contain', hasCenteredMedia && 'absolute right-0')}
+                src={visibleSchoolLogo}
+                style={{
+                  height: presentation.schoolLogoHeightPx,
+                  marginLeft: hasCenteredMedia ? undefined : presentation.photoGapPx,
+                  top: hasCenteredMedia ? presentation.schoolLogoOffsetTopPx : undefined,
+                  marginTop: hasCenteredMedia ? undefined : presentation.schoolLogoOffsetTopPx,
+                  width: presentation.schoolLogoWidthPx,
                 }}
               />
             ) : null}

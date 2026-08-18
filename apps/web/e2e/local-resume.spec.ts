@@ -67,15 +67,20 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
   expect((await readFile(currentPdfPath)).subarray(0, 4).toString()).toBe('%PDF');
 
   const sansPreviewKey = await visibleCanvasPreview(page).getAttribute('data-preview-key');
-  await page
-    .locator('input[type="file"][accept="image/jpeg,image/png,image/webp"]')
-    .setInputFiles('src/pages/home/assets/hero.png');
+  await page.getByLabel('上传头像原图').setInputFiles('src/pages/home/assets/hero.png');
   const cropDialog = page.getByRole('dialog', { name: '裁剪简历头像' });
   await expect(cropDialog).toBeVisible();
   await cropDialog.getByRole('button', { name: '确认头像' }).click();
   await expect(cropDialog).not.toBeVisible();
 
-  await page.getByRole('button', { name: '工作经历', exact: true }).click();
+  await page.getByLabel('上传校徽原图').setInputFiles('src/pages/home/assets/hero.png');
+  const schoolLogoCropDialog = page.getByRole('dialog', { name: '裁剪校徽' });
+  await expect(schoolLogoCropDialog).toBeVisible();
+  await schoolLogoCropDialog.getByRole('button', { name: '确认校徽' }).click();
+  await expect(schoolLogoCropDialog).not.toBeVisible();
+  await expect(page.getByAltText('学校校徽')).toBeVisible();
+
+  await page.getByRole('button', { name: /^工作经历(?: |$)/ }).click();
   await page.getByRole('button', { name: '新增一条工作经历' }).click();
   await page.getByRole('button', { name: '新增一条工作经历' }).click();
   await page.getByLabel('公司').nth(0).fill('甲公司');
@@ -103,7 +108,7 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
     await serifDownloadPromise
   ).saveAs(testInfo.outputPath('local-resume-right-custom-spacing.pdf'));
 
-  await page.getByRole('button', { name: '个人简介', exact: true }).click();
+  await page.getByRole('button', { name: /^个人简介(?: |$)/ }).click();
   await page
     .getByRole('textbox', { name: '简介内容' })
     .fill(

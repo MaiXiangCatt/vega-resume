@@ -698,6 +698,78 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/resumes/{resumeId}/school-logo:
+    parameters:
+      - $ref: "#/components/parameters/ResumeId"
+    get:
+      operationId: getResumeSchoolLogo
+      tags:
+        - Resume
+      summary: Get the current resume school logo
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: PNG school logo bytes.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: putResumeSchoolLogo
+      tags:
+        - Resume
+      summary: Replace the current resume school logo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: A 500×500 PNG school logo cropped to a square while preserving transparency.
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      operationId: deleteResumeSchoolLogo
+      tags:
+        - Resume
+      summary: Delete the current resume school logo
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Updated resume.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/analytics/config:
     get:
       operationId: getAnalyticsConfig
@@ -1224,6 +1296,7 @@ components:
         - templateId
         - revision
         - hasAvatar
+        - hasSchoolLogo
         - exportCount
         - createdAt
         - updatedAt
@@ -1244,6 +1317,8 @@ components:
           format: int64
           minimum: 1
         hasAvatar:
+          type: boolean
+        hasSchoolLogo:
           type: boolean
         templateId:
           type: string
@@ -1376,6 +1451,10 @@ components:
         profileAlignment:
           $ref: "#/components/schemas/ProfileAlignment"
         avatar:
+          type: string
+          nullable: true
+          maxLength: 750000
+        schoolLogo:
           type: string
           nullable: true
           maxLength: 750000
@@ -1523,6 +1602,10 @@ components:
           type: string
           nullable: true
           description: Inline data URL of the avatar JPEG, if any.
+        schoolLogoDataUrl:
+          type: string
+          nullable: true
+          description: Inline data URL of the school logo PNG, if any.
     ResumePrintResponse:
       allOf:
         - $ref: "#/components/schemas/BaseResponse"

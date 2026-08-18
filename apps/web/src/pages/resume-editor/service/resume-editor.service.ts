@@ -27,6 +27,7 @@ export function toDocument(detail: ResumeDetail): ResumeDocument {
     status: detail.status as ResumeStatus,
     revision: detail.revision,
     hasAvatar: detail.hasAvatar,
+    hasSchoolLogo: detail.hasSchoolLogo,
     profileAlignment: normalizeProfileAlignment(
       compatible.profileAlignment ?? compatible.templateId,
     ),
@@ -83,6 +84,26 @@ export const resumeEditorService = {
 
   async deleteAvatar(resumeId: string) {
     const detail = await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/avatar`, {
+      method: 'DELETE',
+    });
+    return toDocument(detail);
+  },
+
+  async putSchoolLogo(resumeId: string, schoolLogo: Blob) {
+    const detail = await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/school-logo`, {
+      body: schoolLogo,
+      headers: { 'Content-Type': 'image/png' },
+      method: 'PUT',
+    });
+    return toDocument(detail);
+  },
+
+  async getSchoolLogo(resumeId: string) {
+    return httpBlobRequest(`/api/resumes/${resumeId}/school-logo`);
+  },
+
+  async deleteSchoolLogo(resumeId: string) {
+    const detail = await httpRequest<ResumeDetail>(`/api/resumes/${resumeId}/school-logo`, {
       method: 'DELETE',
     });
     return toDocument(detail);

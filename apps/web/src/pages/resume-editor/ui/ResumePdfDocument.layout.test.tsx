@@ -36,6 +36,7 @@ function createClassicResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: true,
+    hasSchoolLogo: false,
     profileAlignment: 'center',
     exportCount: 0,
     contentVersion: 4,
@@ -91,6 +92,52 @@ describe('ResumePdfDocument classic header layout', () => {
       marginRight: pxToPt(createResumePresentation(resume.content.formatting, 'right').photoGapPx),
     });
     expect(name.props.style).toMatchObject({ textAlign: 'right' });
+  });
+
+  it('mirrors a vertically centered school logo across from the avatar', () => {
+    const resume = { ...createClassicResume(), hasSchoolLogo: true };
+    const presentation = createResumePresentation(resume.content.formatting, 'center');
+    const document = ResumePdfDocument({
+      avatar: 'data:image/jpeg;base64,avatar',
+      resume,
+      schoolLogo: 'data:image/png;base64,logo',
+    }) as PdfElement;
+    const header = childAt(childAt(document, 0), 0);
+    const logo = childAt(header, 0);
+    const identity = childAt(header, 1);
+    const avatar = childAt(header, 2);
+
+    expect(logo.props.style).toMatchObject({
+      height: pxToPt(presentation.schoolLogoHeightPx),
+      left: 0,
+      position: 'absolute',
+      top: pxToPt(presentation.schoolLogoOffsetTopPx),
+      width: pxToPt(presentation.schoolLogoWidthPx),
+    });
+    expect(identity.props.style).toMatchObject({ width: '100%' });
+    expect(avatar.props.style).toMatchObject({ position: 'absolute', right: 0, top: 0 });
+
+    const rightDocument = ResumePdfDocument({
+      avatar: 'data:image/jpeg;base64,avatar',
+      resume: { ...resume, profileAlignment: 'right' },
+      schoolLogo: 'data:image/png;base64,logo',
+    }) as PdfElement;
+    const rightHeader = childAt(childAt(rightDocument, 0), 0);
+    expect(childAt(rightHeader, 0).props.style).toMatchObject({ marginRight: expect.any(Number) });
+    expect(childAt(rightHeader, 2).props.style).toMatchObject({ marginLeft: expect.any(Number) });
+  });
+
+  it('keeps a standalone school logo printable', () => {
+    const resume = { ...createClassicResume(), hasAvatar: false, hasSchoolLogo: true };
+    resume.content.profile.fullName = '';
+    const document = ResumePdfDocument({
+      avatar: null,
+      resume,
+      schoolLogo: 'data:image/png;base64,logo',
+    }) as PdfElement;
+    const header = childAt(childAt(document, 0), 0);
+
+    expect(childAt(header, 0).props.style).toMatchObject({ left: 0, position: 'absolute' });
   });
 
   it('uses anonymous metadata and omits the profile header when it is hidden', () => {

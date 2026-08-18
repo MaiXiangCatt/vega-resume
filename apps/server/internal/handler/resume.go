@@ -50,6 +50,7 @@ type ResumeHandler struct {
 
 type importResumeBody struct {
 	Avatar           *string         `json:"avatar"`
+	SchoolLogo       *string         `json:"schoolLogo"`
 	Content          json.RawMessage `json:"content"`
 	ExpectedRevision *int64          `json:"expectedRevision"`
 	ProfileAlignment *string         `json:"profileAlignment"`
@@ -160,7 +161,7 @@ func (h *ResumeHandler) ImportResume(c *gin.Context) {
 	}
 	resume, err := h.resumes.Import(c.Request.Context(), userID, service.ImportResumeInput{
 		Version: body.Version, Title: body.Title, ProfileAlignment: body.ProfileAlignment,
-		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar,
+		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar, SchoolLogo: body.SchoolLogo,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -241,7 +242,7 @@ func (h *ResumeHandler) ReplaceResumeImport(c *gin.Context, resumeID generated.R
 	}
 	resume, err := h.resumes.ReplaceImport(c.Request.Context(), userID, uuid.UUID(resumeID), service.ImportResumeInput{
 		Version: body.Version, Title: body.Title, ProfileAlignment: body.ProfileAlignment,
-		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar, ExpectedRevision: body.ExpectedRevision,
+		TemplateID: body.TemplateID, Content: content, Avatar: body.Avatar, SchoolLogo: body.SchoolLogo, ExpectedRevision: body.ExpectedRevision,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -314,6 +315,15 @@ func (h *ResumeHandler) GetResumePrintData(c *gin.Context, resumeID generated.Re
 		dataURL := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(avatar)
 		payload.AvatarDataUrl = &dataURL
 	}
+	if resume.SchoolLogoKey != nil {
+		schoolLogo, schoolLogoErr := h.resumes.GetSchoolLogo(c.Request.Context(), userID, tokenResumeID)
+		if schoolLogoErr != nil {
+			writeError(c, schoolLogoErr)
+			return
+		}
+		dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(schoolLogo)
+		payload.SchoolLogoDataUrl = &dataURL
+	}
 	c.JSON(http.StatusOK, model.OK(payload))
 }
 
@@ -364,6 +374,60 @@ func (h *ResumeHandler) DeleteResumeAvatar(c *gin.Context, resumeID generated.Re
 		return
 	}
 	resume, err := h.resumes.DeleteAvatar(c.Request.Context(), userID, uuid.UUID(resumeID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) PutResumeSchoolLogo(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	mediaType, _, mediaTypeErr := mime.ParseMediaType(c.GetHeader("Content-Type"))
+	if mediaTypeErr != nil || mediaType != "image/png" {
+		writeError(c, model.ErrSchoolLogoInvalid)
+		return
+	}
+	data, err := io.ReadAll(io.LimitReader(c.Request.Body, service.MaxSchoolLogoBytes+1))
+	if err != nil {
+		writeError(c, model.ErrInvalidParam)
+		return
+	}
+	if len(data) > service.MaxSchoolLogoBytes {
+		writeError(c, model.ErrFileTooLarge)
+		return
+	}
+	resume, err := h.resumes.PutSchoolLogo(c.Request.Context(), userID, uuid.UUID(resumeID), data)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	writeResume(c, resume)
+}
+
+func (h *ResumeHandler) GetResumeSchoolLogo(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	data, err := h.resumes.GetSchoolLogo(c.Request.Context(), userID, uuid.UUID(resumeID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Header("Cache-Control", "private, max-age=300")
+	c.Data(http.StatusOK, "image/png", data)
+}
+
+func (h *ResumeHandler) DeleteResumeSchoolLogo(c *gin.Context, resumeID generated.ResumeId) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	resume, err := h.resumes.DeleteSchoolLogo(c.Request.Context(), userID, uuid.UUID(resumeID))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -431,7 +495,8 @@ func resumeSummary(resume *model.Resume) generated.ResumeSummary {
 		Id: resume.ID, Title: resume.Title, Status: generated.ResumeStatus(resume.Status),
 		ProfileAlignment: generated.ProfileAlignment(profileAlignment),
 		TemplateId:       service.LegacyTemplateIDForAlignment(profileAlignment),
-		Revision:         resume.Revision, HasAvatar: resume.AvatarKey != nil, ExportCount: resume.ExportCount,
+		Revision:         resume.Revision, HasAvatar: resume.AvatarKey != nil,
+		HasSchoolLogo: resume.SchoolLogoKey != nil, ExportCount: resume.ExportCount,
 		CreatedAt: resume.CreatedAt, UpdatedAt: resume.UpdatedAt,
 	}
 }
@@ -446,7 +511,8 @@ func resumeDetail(resume *model.Resume) (generated.ResumeDetail, error) {
 	summary := resumeSummary(resume)
 	return generated.ResumeDetail{
 		Id: summary.Id, Title: summary.Title, Status: summary.Status, ProfileAlignment: summary.ProfileAlignment, TemplateId: summary.TemplateId,
-		Revision: summary.Revision, HasAvatar: summary.HasAvatar, ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
+		Revision: summary.Revision, HasAvatar: summary.HasAvatar, HasSchoolLogo: summary.HasSchoolLogo,
+		ExportCount: summary.ExportCount, CreatedAt: summary.CreatedAt, UpdatedAt: summary.UpdatedAt,
 		ContentVersion: generated.ResumeDetailContentVersion(resume.ContentVersion), Content: content,
 	}, nil
 }

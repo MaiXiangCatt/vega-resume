@@ -18,6 +18,7 @@ function createDocument(revision: number, title = `简历 ${revision}`): ResumeD
     status: 'draft',
     revision,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left',
     exportCount: 0,
     contentVersion: 4,
@@ -51,23 +52,23 @@ describe('useResumePdfPreview', () => {
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    expect(result.current.pending?.key).toBe('1:0');
-    act(() => result.current.commitPending('1:0'));
-    expect(result.current.current?.key).toBe('1:0');
+    expect(result.current.pending?.key).toBe('1:0:0');
+    act(() => result.current.commitPending('1:0:0'));
+    expect(result.current.current?.key).toBe('1:0:0');
 
     rerender({ document: createDocument(2) });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(799);
     });
     expect(pdfMock.createResumePdfBlob).toHaveBeenCalledTimes(1);
-    expect(result.current.current?.key).toBe('1:0');
+    expect(result.current.current?.key).toBe('1:0:0');
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1);
       await Promise.resolve();
     });
-    expect(result.current.pending?.key).toBe('2:0');
-    expect(result.current.current?.key).toBe('1:0');
+    expect(result.current.pending?.key).toBe('2:0:0');
+    expect(result.current.current?.key).toBe('1:0:0');
   });
 
   it('coalesces changes made during generation and ignores the stale result', async () => {
@@ -101,9 +102,9 @@ describe('useResumePdfPreview', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.pending?.key).toBe('3:0');
+    expect(result.current.pending?.key).toBe('3:0:0');
     expect(pdfMock.createResumePdfBlob).toHaveBeenCalledTimes(2);
-    expect(result.current.pending?.key).not.toBe('1:0');
+    expect(result.current.pending?.key).not.toBe('1:0:0');
   });
 
   it('ignores stale canvas commits and retries render errors without regenerating the PDF', async () => {
@@ -125,13 +126,13 @@ describe('useResumePdfPreview', () => {
     act(() => result.current.commitPending('stale-key'));
     expect(result.current.current).toBeNull();
 
-    act(() => result.current.reportRenderError('1:0', new Error('canvas failed')));
+    act(() => result.current.reportRenderError('1:0:0', new Error('canvas failed')));
     expect(result.current.error).toBe('canvas failed');
     const previousRevision = result.current.renderRevision;
     act(() => result.current.retry());
     expect(result.current.renderRevision).toBe(previousRevision + 1);
     expect(pdfMock.createResumePdfBlob).toHaveBeenCalledTimes(1);
-    expect(result.current.pending?.key).toBe('1:0');
+    expect(result.current.pending?.key).toBe('1:0:0');
   });
 
   it('reuses a matching preview blob for export and regenerates a stale one', async () => {

@@ -104,6 +104,7 @@ type ResumeRepository interface {
 	ListResumes(ctx context.Context, userID uuid.UUID, options ResumeListOptions) ([]model.Resume, int, error)
 	UpdateResume(ctx context.Context, resume *model.Resume, expectedRevision int64) error
 	SetResumeAvatar(ctx context.Context, userID, resumeID uuid.UUID, avatarKey *string) error
+	SetResumeSchoolLogo(ctx context.Context, userID, resumeID uuid.UUID, schoolLogoKey *string) error
 	IncrementResumeExport(ctx context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error
 	DeleteResume(ctx context.Context, userID, resumeID uuid.UUID) error
 	GetResumeStats(ctx context.Context, userID uuid.UUID) (ResumeStats, error)

@@ -30,6 +30,7 @@ function createDocument(
     status: 'draft',
     revision,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left',
     exportCount: 0,
     contentVersion: 4,
@@ -118,7 +119,7 @@ describe('local resume service', () => {
     expect(await blobText(avatar ?? null)).toBe('legacy-avatar');
   });
 
-  it('creates, copies and deletes independent resumes with their avatars', async () => {
+  it('creates, copies and deletes independent resumes with their image assets', async () => {
     let id = 0;
     const service = createLocalResumeService({
       createId: () => `local-${++id}`,
@@ -130,7 +131,11 @@ describe('local resume service', () => {
       created,
       new NodeBlob(['avatar'], { type: 'image/jpeg' }) as Blob,
     );
-    const copied = await service.copy(withAvatar.id);
+    const withSchoolLogo = await service.putSchoolLogo(
+      withAvatar,
+      new NodeBlob(['school-logo'], { type: 'image/png' }) as Blob,
+    );
+    const copied = await service.copy(withSchoolLogo.id);
 
     expect(copied).toMatchObject({
       id: 'local-2',
@@ -139,11 +144,14 @@ describe('local resume service', () => {
       revision: 1,
       exportCount: 0,
       hasAvatar: true,
+      hasSchoolLogo: true,
     });
-    expect(await blobText((await service.get(copied.id)).avatar)).toBe('avatar');
+    const copiedAssets = await service.get(copied.id);
+    expect(await blobText(copiedAssets.avatar)).toBe('avatar');
+    expect(await blobText(copiedAssets.schoolLogo)).toBe('school-logo');
 
-    await service.delete(withAvatar.id);
-    await expect(service.get(withAvatar.id)).rejects.toThrow('不存在');
+    await service.delete(withSchoolLogo.id);
+    await expect(service.get(withSchoolLogo.id)).rejects.toThrow('不存在');
     expect((await service.get(copied.id)).document.title).toBe('产品简历 - 副本');
   });
 
@@ -155,6 +163,7 @@ describe('local resume service', () => {
       profileAlignment: 'center',
       content: createDefaultContent(),
       avatar: `data:image/jpeg;base64,${btoa('avatar')}`,
+      schoolLogo: `data:image/png;base64,${btoa('school-logo')}`,
     };
 
     const imported = await service.import(envelope);
@@ -168,7 +177,10 @@ describe('local resume service', () => {
       title: '前端工程师简历',
       status: 'draft',
       hasAvatar: true,
+      hasSchoolLogo: true,
     });
+    const importedAssets = await service.get(imported.id);
+    expect(importedAssets.schoolLogo).not.toBeNull();
     expect(list.items).toHaveLength(1);
     expect(await service.stats()).toEqual({
       completed: 1,

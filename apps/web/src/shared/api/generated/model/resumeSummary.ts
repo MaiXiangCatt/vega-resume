@@ -20,6 +20,7 @@ export interface ResumeSummary {
   /** @minimum 1 */
   revision: number;
   hasAvatar: boolean;
+  hasSchoolLogo: boolean;
   /**
      * Legacy projection. Left maps to modern-editorial, center to classic-professional, and right to null.
      * @deprecated

@@ -136,6 +136,23 @@ func (s *MemoryStore) SetResumeAvatar(_ context.Context, userID, resumeID uuid.U
 	return nil
 }
 
+func (s *MemoryStore) SetResumeSchoolLogo(_ context.Context, userID, resumeID uuid.UUID, schoolLogoKey *string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	resume, ok := s.resumes[resumeID]
+	if !ok || resume.UserID != userID || resume.DeletedAt.Valid {
+		return ErrNotFound
+	}
+	if schoolLogoKey == nil {
+		resume.SchoolLogoKey = nil
+	} else {
+		value := *schoolLogoKey
+		resume.SchoolLogoKey = &value
+	}
+	resume.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
 func (s *MemoryStore) IncrementResumeExport(_ context.Context, userID, resumeID uuid.UUID, updatedAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -189,6 +206,10 @@ func cloneResume(resume *model.Resume) *model.Resume {
 	if resume.AvatarKey != nil {
 		avatarKey := *resume.AvatarKey
 		copy.AvatarKey = &avatarKey
+	}
+	if resume.SchoolLogoKey != nil {
+		schoolLogoKey := *resume.SchoolLogoKey
+		copy.SchoolLogoKey = &schoolLogoKey
 	}
 	return &copy
 }
