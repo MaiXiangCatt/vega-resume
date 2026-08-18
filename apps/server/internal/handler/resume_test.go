@@ -7,6 +7,7 @@ import (
 	"errors"
 	"image"
 	"image/jpeg"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -244,6 +245,73 @@ func TestResumeAvatarAcceptsFiveBySevenJPEG(t *testing.T) {
 	}
 }
 
+func TestResumeSchoolLogoAcceptsSquarePNG(t *testing.T) {
+	router := newTestRouter(t)
+	token := registerAccessToken(t, router, "school-logo-user", "school-logo@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+	logo := pngSchoolLogo(t)
+
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/api/resumes/"+resumeID+"/school-logo",
+		bytes.NewReader(logo),
+	)
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "image/png; name=school-logo.png")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("upload school logo status=%d body=%s", response.Code, response.Body.String())
+	}
+	if hasLogo := decodeEnvelope(t, response)["data"].(map[string]any)["hasSchoolLogo"]; hasLogo != true {
+		t.Fatalf("hasSchoolLogo = %v", hasLogo)
+	}
+
+	read := performAuthorizedJSON(router, token, http.MethodGet, "/api/resumes/"+resumeID+"/school-logo", "")
+	if read.Code != http.StatusOK || read.Header().Get("Content-Type") != "image/png" || !bytes.Equal(read.Body.Bytes(), logo) {
+		t.Fatalf("read school logo status=%d content-type=%q", read.Code, read.Header().Get("Content-Type"))
+	}
+
+	deleted := performAuthorizedJSON(router, token, http.MethodDelete, "/api/resumes/"+resumeID+"/school-logo", "")
+	if deleted.Code != http.StatusOK || decodeEnvelope(t, deleted)["data"].(map[string]any)["hasSchoolLogo"] != false {
+		t.Fatalf("delete school logo status=%d body=%s", deleted.Code, deleted.Body.String())
+	}
+}
+
+func TestResumeSchoolLogoRejectsInvalidFormatAndOversizedFile(t *testing.T) {
+	router := newTestRouter(t)
+	token := registerAccessToken(t, router, "invalid-school-logo-user", "invalid-school-logo@example.com")
+	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
+	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+
+	wrongFormat := httptest.NewRequest(
+		http.MethodPut,
+		"/api/resumes/"+resumeID+"/school-logo",
+		bytes.NewReader(pngSchoolLogo(t)),
+	)
+	wrongFormat.Header.Set("Authorization", "Bearer "+token)
+	wrongFormat.Header.Set("Content-Type", "image/jpeg")
+	wrongFormatResponse := httptest.NewRecorder()
+	router.ServeHTTP(wrongFormatResponse, wrongFormat)
+	if wrongFormatResponse.Code != http.StatusBadRequest || decodeEnvelope(t, wrongFormatResponse)["code"] != float64(model.ErrSchoolLogoInvalid.Code) {
+		t.Fatalf("wrong format status=%d body=%s", wrongFormatResponse.Code, wrongFormatResponse.Body.String())
+	}
+
+	oversized := httptest.NewRequest(
+		http.MethodPut,
+		"/api/resumes/"+resumeID+"/school-logo",
+		bytes.NewReader(make([]byte, service.MaxSchoolLogoBytes+1)),
+	)
+	oversized.Header.Set("Authorization", "Bearer "+token)
+	oversized.Header.Set("Content-Type", "image/png")
+	oversizedResponse := httptest.NewRecorder()
+	router.ServeHTTP(oversizedResponse, oversized)
+	if oversizedResponse.Code != http.StatusBadRequest || decodeEnvelope(t, oversizedResponse)["code"] != float64(model.ErrFileTooLarge.Code) {
+		t.Fatalf("oversized status=%d body=%s", oversizedResponse.Code, oversizedResponse.Body.String())
+	}
+}
+
 func TestExportResumePdfReturnsPdfAndRecordsExport(t *testing.T) {
 	renderer := &stubRenderer{data: []byte("%PDF-1.7 stub")}
 	router := newTestRouterWithRenderer(t, renderer)
@@ -365,6 +433,18 @@ func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 	token := registerAccessToken(t, router, "print-user", "print@example.com")
 	created := performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes", `{}`)
 	resumeID := decodeEnvelope(t, created)["data"].(map[string]any)["id"].(string)
+	logoRequest := httptest.NewRequest(
+		http.MethodPut,
+		"/api/resumes/"+resumeID+"/school-logo",
+		bytes.NewReader(pngSchoolLogo(t)),
+	)
+	logoRequest.Header.Set("Authorization", "Bearer "+token)
+	logoRequest.Header.Set("Content-Type", "image/png")
+	logoResponse := httptest.NewRecorder()
+	router.ServeHTTP(logoResponse, logoRequest)
+	if logoResponse.Code != http.StatusOK {
+		t.Fatalf("upload school logo status=%d body=%s", logoResponse.Code, logoResponse.Body.String())
+	}
 
 	performAuthorizedJSON(router, token, http.MethodPost, "/api/resumes/"+resumeID+"/export/pdf", "")
 	printToken := renderer.gotURL[strings.Index(renderer.gotURL, "#token=")+len("#token="):]
@@ -379,6 +459,9 @@ func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 	if resume["id"] != resumeID {
 		t.Fatalf("unexpected print resume: %+v", resume)
 	}
+	if logo, ok := printData["schoolLogoDataUrl"].(string); !ok || !strings.HasPrefix(logo, "data:image/png;base64,") {
+		t.Fatalf("missing school logo data URL: %+v", printData)
+	}
 
 	reused := performPrintJSON(router, printPath, printToken)
 	if reused.Code != http.StatusUnauthorized {
@@ -389,6 +472,18 @@ func TestGetResumePrintDataAuthorizedByPrintToken(t *testing.T) {
 	if invalid.Code != http.StatusUnauthorized {
 		t.Fatalf("invalid token status=%d", invalid.Code)
 	}
+}
+
+func pngSchoolLogo(t *testing.T) []byte {
+	t.Helper()
+	var logo bytes.Buffer
+	if err := png.Encode(
+		&logo,
+		image.NewRGBA(image.Rect(0, 0, service.SchoolLogoWidth, service.SchoolLogoHeight)),
+	); err != nil {
+		t.Fatalf("encode school logo: %v", err)
+	}
+	return logo.Bytes()
 }
 
 func TestGetResumePrintDataRejectsTokenForOtherResume(t *testing.T) {

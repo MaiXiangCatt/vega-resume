@@ -33,24 +33,36 @@ Font.register({
 export function ResumePdfDocument({
   avatar,
   resume,
+  schoolLogo = null,
 }: {
   avatar: string | null;
   resume: ResumeDocument;
+  schoolLogo?: string | null;
 }) {
   const accent = resolveAccentColor(resume.content.formatting.accentColor);
   const profile = resume.content.profile;
   const visibleAvatar = profile.enabled ? avatar : null;
+  const visibleSchoolLogo = profile.enabled ? schoolLogo : null;
   const profileAlignment = resume.profileAlignment;
   const formatting = resume.content.formatting;
   const base = pxToPt(formatting.bodyFontSizePx);
   const presentation = createResumePresentation(formatting, profileAlignment);
-  const hasCenteredAvatar = profileAlignment === 'center' && Boolean(visibleAvatar);
-  const hasSideAvatar = Boolean(visibleAvatar) && !hasCenteredAvatar;
-  const avatarOnLeft = profileAlignment === 'right' && hasSideAvatar;
-  const avatarLayout = createAvatarLayout(
-    hasCenteredAvatar,
+  const hasMedia = Boolean(visibleAvatar || visibleSchoolLogo);
+  const hasCenteredMedia = profileAlignment === 'center' && hasMedia;
+  const hasSideMedia = hasMedia && !hasCenteredMedia;
+  const avatarOnLeft = profileAlignment === 'right';
+  const schoolLogoOnLeft = !avatarOnLeft;
+  const avatarLayout = createMediaLayout(
+    hasCenteredMedia,
     avatarOnLeft,
     pxToPt(presentation.photoGapPx),
+    0,
+  );
+  const schoolLogoLayout = createMediaLayout(
+    hasCenteredMedia,
+    schoolLogoOnLeft,
+    pxToPt(presentation.photoGapPx),
+    pxToPt(presentation.schoolLogoOffsetTopPx),
   );
   const styles = StyleSheet.create({
     page: {
@@ -65,24 +77,24 @@ export function ResumePdfDocument({
       paddingTop: pxToPt(formatting.pageMarginPx.top),
     },
     header: {
-      alignItems: hasSideAvatar ? 'flex-start' : 'stretch',
-      flexDirection: hasSideAvatar ? 'row' : 'column',
-      justifyContent: hasSideAvatar ? 'space-between' : 'flex-start',
-      minHeight: hasCenteredAvatar
+      alignItems: hasSideMedia ? 'flex-start' : 'stretch',
+      flexDirection: hasSideMedia ? 'row' : 'column',
+      justifyContent: hasSideMedia ? 'space-between' : 'flex-start',
+      minHeight: hasMedia
         ? pxToPt(presentation.photoHeightPx + presentation.headerPaddingBottomPx)
         : undefined,
       paddingBottom: pxToPt(presentation.headerPaddingBottomPx),
-      position: hasCenteredAvatar ? 'relative' : 'static',
+      position: hasCenteredMedia ? 'relative' : 'static',
     },
     identity: {
-      ...(hasCenteredAvatar
+      ...(hasCenteredMedia
         ? {
             paddingLeft: pxToPt(presentation.profileAvatarInsetPx),
             paddingRight: pxToPt(presentation.profileAvatarInsetPx),
             width: '100%',
           }
         : {}),
-      ...(hasSideAvatar ? { flexBasis: 0, flexGrow: 1 } : {}),
+      ...(hasSideMedia ? { flexBasis: 0, flexGrow: 1 } : {}),
     },
     name: {
       color: presentation.bodyColor,
@@ -114,6 +126,12 @@ export function ResumePdfDocument({
       ...avatarLayout,
       width: pxToPt(presentation.photoWidthPx),
     },
+    schoolLogo: {
+      height: pxToPt(presentation.schoolLogoHeightPx),
+      objectFit: 'contain',
+      ...schoolLogoLayout,
+      width: pxToPt(presentation.schoolLogoWidthPx),
+    },
     section: {},
     sectionTitle: {
       borderBottomColor: accent,
@@ -135,7 +153,11 @@ export function ResumePdfDocument({
   });
 
   const contacts = [profile.phone, profile.email, profile.location].filter(Boolean);
-  const hasPrintableProfile = profileHasPrintableContent(profile, Boolean(visibleAvatar));
+  const hasPrintableProfile = profileHasPrintableContent(
+    profile,
+    Boolean(visibleAvatar),
+    Boolean(visibleSchoolLogo),
+  );
   const printableSections = resume.content.sections.filter(sectionHasPrintableContent);
 
   return (
@@ -149,6 +171,8 @@ export function ResumePdfDocument({
           <View style={styles.header}>
             {visibleAvatar && avatarOnLeft ? (
               <Image src={visibleAvatar} style={styles.avatar} />
+            ) : visibleSchoolLogo && schoolLogoOnLeft ? (
+              <Image src={visibleSchoolLogo} style={styles.schoolLogo} />
             ) : null}
             <View style={styles.identity}>
               {profile.fullName ? <Text style={styles.name}>{profile.fullName}</Text> : null}
@@ -172,6 +196,8 @@ export function ResumePdfDocument({
             </View>
             {visibleAvatar && !avatarOnLeft ? (
               <Image src={visibleAvatar} style={styles.avatar} />
+            ) : visibleSchoolLogo && !schoolLogoOnLeft ? (
+              <Image src={visibleSchoolLogo} style={styles.schoolLogo} />
             ) : null}
           </View>
         ) : null}
@@ -203,12 +229,12 @@ function justifyContentForAlignment(
   }
 }
 
-function createAvatarLayout(hasCenteredAvatar: boolean, avatarOnLeft: boolean, gap: number) {
-  if (hasCenteredAvatar) {
-    return { position: 'absolute' as const, right: 0, top: 0 };
+function createMediaLayout(hasCenteredMedia: boolean, onLeft: boolean, gap: number, top: number) {
+  if (hasCenteredMedia) {
+    return { position: 'absolute' as const, ...(onLeft ? { left: 0 } : { right: 0 }), top };
   }
-  if (avatarOnLeft) return { marginRight: gap };
-  return { marginLeft: gap };
+  if (onLeft) return { marginRight: gap, marginTop: top };
+  return { marginLeft: gap, marginTop: top };
 }
 
 function PdfSection({

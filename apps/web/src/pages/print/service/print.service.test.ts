@@ -12,12 +12,14 @@ vi.mock('@/shared/http/http.client', () => ({
 const request = vi.mocked(httpRequest);
 const printPayload = {
   avatarDataUrl: null,
+  schoolLogoDataUrl: null,
   resume: {
     id: 'resume-1',
     title: '测试简历',
     status: 'draft' as const,
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left' as const,
     templateId: 'modern-editorial',
     exportCount: 0,

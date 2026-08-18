@@ -26,12 +26,14 @@ test('prints a short resume on a white page without leaking the token into the r
       status: 200,
       body: ok({
         avatarDataUrl: null,
+        schoolLogoDataUrl: null,
         resume: {
           id: resumeId,
           title: '短简历',
           status: 'draft',
           revision: 1,
           hasAvatar: false,
+          hasSchoolLogo: false,
           profileAlignment: 'left',
           templateId: 'modern-editorial',
           exportCount: 0,

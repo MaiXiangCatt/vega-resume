@@ -23,6 +23,7 @@ describe('StructurePanel visibility controls', () => {
       <StructurePanel
         activeId="profile"
         hasAvatar={false}
+        hasSchoolLogo={false}
         onAdd={vi.fn()}
         onFormat={vi.fn()}
         onMove={vi.fn()}

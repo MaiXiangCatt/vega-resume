@@ -1,0 +1,14 @@
+{
+  "challenges": [
+    {
+      "id": "test1",
+      "prompt": "测试1",
+      "answer": "示例1"
+    },
+    {
+      "id": "test2",
+      "prompt": "测试2",
+      "answer": "示例2"
+    }
+  ]
+}

@@ -42,13 +42,19 @@ export function ProfileEditor({
   onAvatar,
   onChange,
   onDeleteAvatar,
+  onDeleteSchoolLogo,
+  onSchoolLogo,
   profile,
+  schoolLogo,
 }: {
   avatar: string | null;
   onAvatar: () => void;
   onChange: (profile: ResumeProfile) => void;
   onDeleteAvatar: () => void;
+  onDeleteSchoolLogo: () => void;
+  onSchoolLogo: () => void;
   profile: ResumeProfile;
+  schoolLogo: string | null;
 }) {
   const setField = (key: Exclude<keyof ResumeProfile, 'enabled' | 'links'>, value: string) =>
     onChange({ ...profile, [key]: value });
@@ -58,28 +64,53 @@ export function ProfileEditor({
       title="基本信息"
       description="这部分固定在简历头部，不参与板块排序。"
     >
-      <div className="flex items-center gap-5 rounded-2xl border border-[#e8e0e6] bg-[#fbf9fa] p-4">
-        <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#ded4db] bg-white text-[#8f7d8b]">
-          {avatar ? (
-            <img alt="简历头像" className="size-full object-contain" src={avatar} />
-          ) : (
-            <ImagePlus aria-hidden="true" size={24} />
-          )}
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-[#32272f]">简历头像</p>
-          <p className="mt-1 text-xs leading-5 text-[#81757e]">
-            上传后按一寸照常用的 5:7 比例裁剪，每份简历独立保存。
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Button onClick={onAvatar} size="sm" variant="outline">
-              {avatar ? '替换头像' : '上传头像'}
-            </Button>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="flex items-center gap-4 rounded-2xl border border-[#e8e0e6] bg-[#fbf9fa] p-4">
+          <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#ded4db] bg-white text-[#8f7d8b]">
             {avatar ? (
-              <Button onClick={onDeleteAvatar} size="sm" variant="ghost">
-                删除头像
+              <img alt="简历头像" className="size-full object-contain" src={avatar} />
+            ) : (
+              <ImagePlus aria-hidden="true" size={24} />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#32272f]">简历头像</p>
+            <p className="mt-1 text-xs leading-5 text-[#81757e]">5:7 裁剪，每份简历独立保存。</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={onAvatar} size="sm" variant="outline">
+                {avatar ? '替换头像' : '上传头像'}
               </Button>
-            ) : null}
+              {avatar ? (
+                <Button onClick={onDeleteAvatar} size="sm" variant="ghost">
+                  删除头像
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 rounded-2xl border border-[#e8e0e6] bg-[#fbf9fa] p-4">
+          <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#ded4db] bg-white text-[#8f7d8b]">
+            {schoolLogo ? (
+              <img alt="学校校徽" className="size-full object-contain" src={schoolLogo} />
+            ) : (
+              <ImagePlus aria-hidden="true" size={24} />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#32272f]">学校校徽</p>
+            <p className="mt-1 text-xs leading-5 text-[#81757e]">
+              1:1 裁剪，透明 PNG，位于头像对侧。
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={onSchoolLogo} size="sm" variant="outline">
+                {schoolLogo ? '替换校徽' : '上传校徽'}
+              </Button>
+              {schoolLogo ? (
+                <Button onClick={onDeleteSchoolLogo} size="sm" variant="ghost">
+                  删除校徽
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

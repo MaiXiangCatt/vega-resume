@@ -15,6 +15,7 @@ export function createResumePersistence(
     const snapshot = async (
       operation: Promise<{
         avatar: Blob | null;
+        schoolLogo: Blob | null;
         document: ResumeDocument;
       }>,
     ): Promise<ResumeEditorSnapshot> => {
@@ -32,6 +33,12 @@ export function createResumePersistence(
             .deleteAvatar(document)
             .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
         ),
+      deleteSchoolLogo: async (document) =>
+        snapshot(
+          localResumeStore
+            .deleteSchoolLogo(document)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
       load: () => snapshot(localResumeStore.get(resumeId)),
       overwrite: async (document) =>
         snapshot(
@@ -43,6 +50,12 @@ export function createResumePersistence(
         snapshot(
           localResumeStore
             .putAvatar(document, avatar)
+            .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
+        ),
+      putSchoolLogo: async (document, schoolLogo) =>
+        snapshot(
+          localResumeStore
+            .putSchoolLogo(document, schoolLogo)
             .then((saved) => localResumeStore.cachedSnapshot(saved.id)),
         ),
       recordExport: () => localResumeStore.recordExport(resumeId),
@@ -62,9 +75,15 @@ export function createResumePersistence(
   }
 
   let avatar: Blob | null = null;
-  const snapshot = (document: ResumeDocument, nextAvatar = avatar): ResumeEditorSnapshot => ({
+  let schoolLogo: Blob | null = null;
+  const snapshot = (
+    document: ResumeDocument,
+    nextAvatar = avatar,
+    nextSchoolLogo = schoolLogo,
+  ): ResumeEditorSnapshot => ({
     document,
     avatar: nextAvatar,
+    schoolLogo: nextSchoolLogo,
     durability: 'persistent',
   });
 
@@ -72,6 +91,9 @@ export function createResumePersistence(
     async load() {
       const document = await resumeEditorService.get(resumeId);
       avatar = document.hasAvatar ? await resumeEditorService.getAvatar(resumeId) : null;
+      schoolLogo = document.hasSchoolLogo
+        ? await resumeEditorService.getSchoolLogo(resumeId)
+        : null;
       return snapshot(document);
     },
     async save(document, expectedRevision) {
@@ -88,6 +110,7 @@ export function createResumePersistence(
         envelope,
       );
       avatar = envelope.avatar ? dataUrlToBlob(envelope.avatar) : null;
+      schoolLogo = envelope.schoolLogo ? dataUrlToBlob(envelope.schoolLogo) : null;
       return snapshot(imported);
     },
     async putAvatar(_document, nextAvatar) {
@@ -98,6 +121,16 @@ export function createResumePersistence(
     async deleteAvatar() {
       const updated = await resumeEditorService.deleteAvatar(resumeId);
       avatar = null;
+      return snapshot(updated);
+    },
+    async putSchoolLogo(_document, nextSchoolLogo) {
+      const updated = await resumeEditorService.putSchoolLogo(resumeId, nextSchoolLogo);
+      schoolLogo = nextSchoolLogo;
+      return snapshot(updated);
+    },
+    async deleteSchoolLogo() {
+      const updated = await resumeEditorService.deleteSchoolLogo(resumeId);
+      schoolLogo = null;
       return snapshot(updated);
     },
     exportPdf: () => resumeEditorService.exportPdf(resumeId),

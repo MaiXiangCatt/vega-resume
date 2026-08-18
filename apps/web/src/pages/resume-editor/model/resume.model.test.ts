@@ -151,6 +151,32 @@ describe('resume editor model', () => {
     expect(() => parseImportEnvelope(envelope)).toThrow();
   });
 
+  it('round-trips an optional v4 school logo while keeping legacy imports asset-free', () => {
+    const envelope = {
+      version: 4 as const,
+      title: 'Resume',
+      profileAlignment: 'left' as const,
+      avatar: null,
+      schoolLogo: 'data:image/png;base64,c2Nob29sLWxvZ28=',
+      content: createDefaultContent(),
+    };
+
+    expect(parseImportEnvelope(envelope).schoolLogo).toBe(envelope.schoolLogo);
+    expect(() =>
+      parseImportEnvelope({ ...envelope, schoolLogo: 'data:image/jpeg;base64,bG9nbw==' }),
+    ).toThrow();
+    const v3Content = structuredClone(createDefaultContent()) as Record<string, unknown>;
+    delete (v3Content.profile as Record<string, unknown>).enabled;
+    expect(
+      parseImportEnvelope({
+        version: 3,
+        title: 'Legacy',
+        profileAlignment: 'left',
+        content: v3Content,
+      }).schoolLogo,
+    ).toBeNull();
+  });
+
   it('rejects the legacy structured skills format', () => {
     const content = createDefaultContent();
     const legacySkills = {
@@ -253,5 +279,13 @@ describe('resume editor model', () => {
     expect(completionIssues(content)).toEqual([]);
     summary.enabled = false;
     expect(completionIssues(content)).toEqual(['请至少显示一项有内容的模块']);
+  });
+
+  it('counts a standalone school logo as printable profile content without waiving the name', () => {
+    const content = createDefaultContent();
+
+    expect(completionIssues(content, false, true)).toEqual(['请填写姓名']);
+    content.profile.enabled = false;
+    expect(completionIssues(content, false, true)).toEqual(['请至少显示一项有内容的模块']);
   });
 });

@@ -22,6 +22,7 @@ function createResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left',
     exportCount: 0,
     contentVersion: 4,
@@ -42,7 +43,7 @@ describe('PrintResumePage', () => {
   });
 
   it('renders the resume and flags the page ready', async () => {
-    getPrintData.mockResolvedValue({ document: createResume(), avatar: null });
+    getPrintData.mockResolvedValue({ document: createResume(), avatar: null, schoolLogo: null });
 
     render(<PrintResumePage resumeId="resume-1" token="token-1" />);
 
@@ -71,7 +72,7 @@ describe('PrintResumePage', () => {
   it('uses a generic document title when the profile is hidden', async () => {
     const resume = createResume();
     resume.content.profile.enabled = false;
-    getPrintData.mockResolvedValue({ document: resume, avatar: null });
+    getPrintData.mockResolvedValue({ document: resume, avatar: null, schoolLogo: null });
 
     const view = render(<PrintResumePage resumeId="resume-1" token="token-1" />);
 

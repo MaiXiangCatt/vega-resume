@@ -11,6 +11,7 @@ type PdfPreviewStatus = 'idle' | 'generating' | 'loading' | 'ready' | 'error';
 
 type PdfInput = {
   avatar: string | null;
+  schoolLogo: string | null;
   document: ResumeDocument;
   key: string;
 };
@@ -19,12 +20,16 @@ export function useResumePdfPreview({
   active,
   avatar,
   avatarRevision,
+  schoolLogo = null,
+  schoolLogoRevision = 0,
   document,
   documentVersion = document?.revision ?? 0,
 }: {
   active: boolean;
   avatar: string | null;
   avatarRevision: number;
+  schoolLogo?: string | null;
+  schoolLogoRevision?: number;
   document: ResumeDocument | null;
   documentVersion?: number;
 }) {
@@ -67,7 +72,9 @@ export function useResumePdfPreview({
       setError(null);
       runningKeyRef.current = input.key;
       const operation = import('../service/resume-pdf.service')
-        .then(({ createResumePdfBlob }) => createResumePdfBlob(input.document, input.avatar))
+        .then(({ createResumePdfBlob }) =>
+          createResumePdfBlob(input.document, input.avatar, input.schoolLogo),
+        )
         .then((blob) => {
           generatedOnceRef.current = true;
           if (latestInputRef.current?.key === input.key) publish(blob, input.key);
@@ -97,8 +104,9 @@ export function useResumePdfPreview({
     if (!active || !document) return;
     const input = {
       avatar,
+      schoolLogo,
       document: structuredClone(document),
-      key: `${documentVersion}:${avatarRevision}`,
+      key: `${documentVersion}:${avatarRevision}:${schoolLogoRevision}`,
     };
     latestInputRef.current = input;
     if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -109,7 +117,17 @@ export function useResumePdfPreview({
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
     };
-  }, [active, avatar, avatarRevision, document, documentVersion, generate, generationTick]);
+  }, [
+    active,
+    avatar,
+    avatarRevision,
+    document,
+    documentVersion,
+    generate,
+    generationTick,
+    schoolLogo,
+    schoolLogoRevision,
+  ]);
 
   useEffect(
     () => () => {

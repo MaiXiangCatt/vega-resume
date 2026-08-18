@@ -23,7 +23,7 @@ function editorError(error: unknown) {
   return '网络开小差了，请稍后重试';
 }
 
-type AvatarState = {
+type ImageAssetState = {
   blob: Blob | null;
   url: string | null;
 };
@@ -34,14 +34,21 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
   const saveStatus = useResumeEditorStore((state) => state.saveStatus);
   const durability = useResumeEditorStore((state) => state.durability);
   const persistence = useMemo(() => createResumePersistence(mode, resumeId), [mode, resumeId]);
-  const [avatar, setAvatar] = useState<AvatarState>({ blob: null, url: null });
+  const [avatar, setAvatar] = useState<ImageAssetState>({ blob: null, url: null });
+  const [schoolLogo, setSchoolLogo] = useState<ImageAssetState>({ blob: null, url: null });
   const [avatarRevision, setAvatarRevision] = useState(0);
+  const [schoolLogoRevision, setSchoolLogoRevision] = useState(0);
   const avatarRef = useRef(avatar);
+  const schoolLogoRef = useRef(schoolLogo);
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef(false);
   const pendingRef = useRef(false);
   const pendingDocumentSaveRef = useRef(false);
   const pendingAvatarRef = useRef<{ active: boolean; blob: Blob | null }>({
+    active: false,
+    blob: null,
+  });
+  const pendingSchoolLogoRef = useRef<{ active: boolean; blob: Blob | null }>({
     active: false,
     blob: null,
   });
@@ -58,6 +65,18 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
     setAvatarRevision((revision) => revision + 1);
   }, []);
 
+  const replaceSchoolLogo = useCallback((blob: Blob | null) => {
+    const previous = schoolLogoRef.current.url;
+    if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+    const next = {
+      blob,
+      url: blob && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null,
+    };
+    schoolLogoRef.current = next;
+    setSchoolLogo(next);
+    setSchoolLogoRevision((revision) => revision + 1);
+  }, []);
+
   const applySnapshot = useCallback(
     (snapshot: ResumeEditorSnapshot, replaceDocument = false) => {
       const store = useResumeEditorStore.getState();
@@ -65,8 +84,9 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
       if (replaceDocument) store.replaceDocument(snapshot.document);
       else store.load(snapshot.document);
       replaceAvatar(snapshot.avatar);
+      replaceSchoolLogo(snapshot.schoolLogo);
     },
-    [replaceAvatar],
+    [replaceAvatar, replaceSchoolLogo],
   );
 
   const load = useCallback(async () => {
@@ -85,6 +105,8 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
       if (timerRef.current) window.clearTimeout(timerRef.current);
       const avatarUrl = avatarRef.current.url;
       if (avatarUrl?.startsWith('blob:')) URL.revokeObjectURL(avatarUrl);
+      const schoolLogoUrl = schoolLogoRef.current.url;
+      if (schoolLogoUrl?.startsWith('blob:')) URL.revokeObjectURL(schoolLogoUrl);
       useResumeEditorStore.getState().reset();
     };
   }, [load]);
@@ -184,13 +206,14 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
       useResumeEditorStore.getState().replaceDocument(saved.document);
       useResumeEditorStore.getState().setDurability(saved.durability);
       replaceAvatar(saved.avatar);
+      replaceSchoolLogo(saved.schoolLogo);
     } catch (error) {
       if (error instanceof LocalResumeStorageError) {
         useResumeEditorStore.getState().setDurability('read-only');
       }
       useResumeEditorStore.getState().setSaveFailed(editorError(error));
     }
-  }, [persistence, replaceAvatar]);
+  }, [persistence, replaceAvatar, replaceSchoolLogo]);
 
   const replaceImport = useCallback(
     async (envelope: ResumeImportEnvelope) => {
@@ -201,6 +224,7 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
         useResumeEditorStore.getState().replaceDocument(imported.document);
         useResumeEditorStore.getState().setDurability(imported.durability);
         replaceAvatar(imported.avatar);
+        replaceSchoolLogo(imported.schoolLogo);
       } catch (error) {
         if (error instanceof LocalResumeStorageError) {
           useResumeEditorStore.getState().setDurability('read-only');
@@ -209,7 +233,7 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
         throw error;
       }
     },
-    [persistence, replaceAvatar],
+    [persistence, replaceAvatar, replaceSchoolLogo],
   );
 
   const saveAvatar = useCallback(
@@ -257,10 +281,57 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
     }
   }, [flushSave, persistence, replaceAvatar]);
 
+  const saveSchoolLogo = useCallback(
+    async (blob: Blob) => {
+      await flushSave();
+      const current = useResumeEditorStore.getState().document;
+      if (!current) return;
+      try {
+        const saved = await persistence.putSchoolLogo(current, blob);
+        pendingSchoolLogoRef.current = { active: false, blob: null };
+        useResumeEditorStore.getState().mergeServerMetadata(saved.document);
+        useResumeEditorStore.getState().setDurability(saved.durability);
+        replaceSchoolLogo(saved.schoolLogo);
+      } catch (error) {
+        if (error instanceof LocalResumeStorageError) {
+          pendingSchoolLogoRef.current = { active: true, blob };
+          useResumeEditorStore.getState().setDurability('read-only');
+          useResumeEditorStore.getState().setSaveFailed(editorError(error));
+          replaceSchoolLogo(blob);
+        }
+        throw error;
+      }
+    },
+    [flushSave, persistence, replaceSchoolLogo],
+  );
+
+  const deleteSchoolLogo = useCallback(async () => {
+    await flushSave();
+    const current = useResumeEditorStore.getState().document;
+    if (!current) return;
+    try {
+      const saved = await persistence.deleteSchoolLogo(current);
+      pendingSchoolLogoRef.current = { active: false, blob: null };
+      useResumeEditorStore.getState().mergeServerMetadata(saved.document);
+      useResumeEditorStore.getState().setDurability(saved.durability);
+      replaceSchoolLogo(saved.schoolLogo);
+    } catch (error) {
+      if (error instanceof LocalResumeStorageError) {
+        pendingSchoolLogoRef.current = { active: true, blob: null };
+        useResumeEditorStore.getState().setDurability('read-only');
+        useResumeEditorStore.getState().setSaveFailed(editorError(error));
+        replaceSchoolLogo(null);
+      }
+      throw error;
+    }
+  }, [flushSave, persistence, replaceSchoolLogo]);
+
   const pdfPreview = useResumePdfPreview({
     active: mode === 'local',
     avatar: avatar.url,
     avatarRevision,
+    schoolLogo: schoolLogo.url,
+    schoolLogoRevision,
     document,
     documentVersion: changeVersion,
   });
@@ -298,6 +369,11 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
     return blobToDataUrl(avatarRef.current.blob);
   }, []);
 
+  const getSchoolLogoDataUrl = useCallback(async () => {
+    if (!schoolLogoRef.current.blob) return null;
+    return blobToDataUrl(schoolLogoRef.current.blob);
+  }, []);
+
   const retryStorage = useCallback(async () => {
     const current = useResumeEditorStore.getState().document;
     try {
@@ -314,6 +390,18 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
         useResumeEditorStore.getState().mergeServerMetadata(saved.document);
         useResumeEditorStore.getState().setDurability(saved.durability);
         replaceAvatar(saved.avatar);
+        replaceSchoolLogo(saved.schoolLogo);
+        return;
+      }
+      if (pendingSchoolLogoRef.current.active) {
+        const pendingSchoolLogo = pendingSchoolLogoRef.current.blob;
+        const saved = pendingSchoolLogo
+          ? await persistence.putSchoolLogo(current, pendingSchoolLogo)
+          : await persistence.deleteSchoolLogo(current);
+        pendingSchoolLogoRef.current = { active: false, blob: null };
+        useResumeEditorStore.getState().mergeServerMetadata(saved.document);
+        useResumeEditorStore.getState().setDurability(saved.durability);
+        replaceSchoolLogo(saved.schoolLogo);
         return;
       }
       if (pendingDocumentSaveRef.current) {
@@ -336,17 +424,28 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
         useResumeEditorStore.getState().setSaveFailed(editorError(error));
       }
     }
-  }, [applySnapshot, flushSave, load, mode, persistence, replaceAvatar, resumeId]);
+  }, [
+    applySnapshot,
+    flushSave,
+    load,
+    mode,
+    persistence,
+    replaceAvatar,
+    replaceSchoolLogo,
+    resumeId,
+  ]);
 
   return {
     avatarBlob: avatar.blob,
     avatarUrl: avatar.url,
     deleteAvatar,
+    deleteSchoolLogo,
     durability,
     edit,
     exportPdf,
     flushSave,
     getAvatarDataUrl,
+    getSchoolLogoDataUrl,
     load,
     mode,
     overwrite,
@@ -355,6 +454,9 @@ export function useResumeEditor(resumeId: string, mode: ResumeEditorMode = 'clou
     replaceImport,
     retryStorage,
     saveAvatar,
+    saveSchoolLogo,
+    schoolLogoBlob: schoolLogo.blob,
+    schoolLogoUrl: schoolLogo.url,
   };
 }
 

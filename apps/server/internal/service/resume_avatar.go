@@ -56,6 +56,12 @@ func (storage *AvatarStorage) Write(key string, data []byte) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
+	if err := os.Rename(temporaryPath, path); err == nil {
+		return nil
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 	return os.Rename(temporaryPath, path)
 }
 

@@ -62,10 +62,12 @@ export function StructurePanel({
   onToggleSection,
   profile,
   hasAvatar,
+  hasSchoolLogo,
   sections,
 }: {
   activeId: string;
   hasAvatar: boolean;
+  hasSchoolLogo: boolean;
   onAdd: () => void;
   onFormat: () => void;
   onMove: (sections: ResumeSection[]) => void;
@@ -103,7 +105,7 @@ export function StructurePanel({
         <StructureProfileItem
           active={activeId === 'profile'}
           enabled={profile.enabled}
-          hasContent={profileHasContent(profile, hasAvatar)}
+          hasContent={profileHasContent(profile, hasAvatar, hasSchoolLogo)}
           onSelect={() => onSelect('profile')}
           onToggle={onToggleProfile}
         />

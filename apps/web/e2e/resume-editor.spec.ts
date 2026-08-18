@@ -65,6 +65,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   };
   let title = '产品设计师简历';
   let profileAlignment = 'left';
+  let hasSchoolLogo = false;
 
   const detail = () => ({
     id: resumeId,
@@ -72,6 +73,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     status: 'draft',
     revision,
     hasAvatar: true,
+    hasSchoolLogo,
     profileAlignment,
     exportCount: 0,
     contentVersion: 4,
@@ -121,12 +123,37 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       status: 200,
     });
   });
+  await page.route(`**/api/resumes/${resumeId}/school-logo`, async (route) => {
+    if (route.request().method() === 'PUT') {
+      hasSchoolLogo = true;
+      await route.fulfill({ contentType: 'application/json', status: 200, body: ok(detail()) });
+      return;
+    }
+    if (route.request().method() === 'DELETE') {
+      hasSchoolLogo = false;
+      await route.fulfill({ contentType: 'application/json', status: 200, body: ok(detail()) });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'image/png',
+      path: 'src/pages/home/assets/hero.png',
+      status: 200,
+    });
+  });
 
   await page.goto(`/resumes/${resumeId}/edit`);
   await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible();
   const preview = page.getByLabel('产品设计师简历 A4 实时预览');
   await expect(preview).toBeVisible();
   await expect(page.locator('iframe')).toHaveCount(0);
+
+  await page.getByLabel('上传校徽原图').setInputFiles('src/pages/home/assets/hero.png');
+  const schoolLogoCropDialog = page.getByRole('dialog', { name: '裁剪校徽' });
+  await expect(schoolLogoCropDialog).toBeVisible();
+  await schoolLogoCropDialog.getByRole('button', { name: '确认校徽' }).click();
+  await expect(schoolLogoCropDialog).not.toBeVisible();
+  await expect.poll(() => hasSchoolLogo).toBe(true);
+  await expect(page.getByAltText('学校校徽')).toBeVisible();
 
   await page.getByLabel('姓名').fill('林清清');
   await page.getByLabel('目标岗位').fill('产品设计师');
@@ -143,8 +170,9 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await expect(preview.getByRole('heading', { name: '林清清' })).toBeVisible();
 
   await page.getByRole('button', { name: '添加板块' }).click();
-  await page.getByLabel('自定义板块').fill('志愿经历');
-  await page.getByRole('button', { name: '创建' }).click();
+  const addSectionDialog = page.getByRole('dialog', { name: '添加自定义板块' });
+  await addSectionDialog.getByRole('textbox', { name: '自定义板块' }).fill('志愿经历');
+  await addSectionDialog.getByRole('button', { name: '创建' }).click();
   await expect(page.getByRole('heading', { name: '志愿经历' })).toBeVisible();
   await page.getByLabel('标题', { exact: true }).fill('开源社区设计志愿者');
   await page.getByRole('button', { name: '开始时间' }).click();
@@ -158,7 +186,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
     .poll(() => content.sections.some((section) => section.type === 'custom'), { timeout: 5000 })
     .toBe(true);
 
-  await page.getByRole('button', { name: '工作经历', exact: true }).click();
+  await page.getByRole('button', { name: /^工作经历(?: |$)/ }).click();
   await page.getByRole('button', { name: '隐藏 工作经历' }).click();
   await expect(preview.getByRole('heading', { name: '工作经历' })).toHaveCount(0);
   await expect(page.getByText('“工作经历”当前已隐藏')).toBeVisible();
@@ -226,7 +254,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await page.getByRole('button', { name: '完成' }).click();
   await expect.poll(() => profileAlignment, { timeout: 5000 }).toBe('center');
   await expect(preview).toHaveAttribute('data-profile-alignment', 'center');
-  await expect(preview.locator('header img')).toBeVisible();
+  await expect(preview.locator('header img').last()).toBeVisible();
   const previewBox = await preview.boundingBox();
   const nameBox = await preview.getByRole('heading', { name: '林清清' }).boundingBox();
   if (!previewBox || !nameBox) throw new Error('经典模板预览未生成可测量的布局');
@@ -245,10 +273,13 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
   await page.getByRole('button', { name: '完成' }).click();
   await expect.poll(() => profileAlignment, { timeout: 5000 }).toBe('right');
   await expect(preview).toHaveAttribute('data-profile-alignment', 'right');
-  const rightPhotoBox = await preview.locator('header img').boundingBox();
+  const rightPhotoBox = await preview.locator('header img').first().boundingBox();
+  const rightSchoolLogoBox = await preview.locator('header img').last().boundingBox();
   const rightNameBox = await preview.getByRole('heading', { name: '林清清' }).boundingBox();
-  if (!rightPhotoBox || !rightNameBox) throw new Error('右对齐头像布局未生成可测量元素');
+  if (!rightPhotoBox || !rightSchoolLogoBox || !rightNameBox)
+    throw new Error('右对齐头像与校徽布局未生成可测量元素');
   expect(rightPhotoBox.x).toBeLessThan(rightNameBox.x);
+  expect(rightSchoolLogoBox.x).toBeGreaterThan(rightNameBox.x);
 
   const rightDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();

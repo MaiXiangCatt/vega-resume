@@ -16,9 +16,14 @@ export function sectionHasContent(section: ResumeSection): boolean {
   return section.items.some(itemHasPrintableContent);
 }
 
-export function profileHasContent(profile: ResumeProfile, hasAvatar = false): boolean {
+export function profileHasContent(
+  profile: ResumeProfile,
+  hasAvatar = false,
+  hasSchoolLogo = false,
+): boolean {
   return (
     hasAvatar ||
+    hasSchoolLogo ||
     Boolean(
       profile.fullName.trim() ||
       profile.targetRole.trim() ||
@@ -30,13 +35,21 @@ export function profileHasContent(profile: ResumeProfile, hasAvatar = false): bo
   );
 }
 
-export function profileHasPrintableContent(profile: ResumeProfile, hasAvatar = false): boolean {
-  return profile.enabled && profileHasContent(profile, hasAvatar);
+export function profileHasPrintableContent(
+  profile: ResumeProfile,
+  hasAvatar = false,
+  hasSchoolLogo = false,
+): boolean {
+  return profile.enabled && profileHasContent(profile, hasAvatar, hasSchoolLogo);
 }
 
-export function resumeHasPrintableContent(content: ResumeContentV4, hasAvatar = false): boolean {
+export function resumeHasPrintableContent(
+  content: ResumeContentV4,
+  hasAvatar = false,
+  hasSchoolLogo = false,
+): boolean {
   return (
-    profileHasPrintableContent(content.profile, hasAvatar) ||
+    profileHasPrintableContent(content.profile, hasAvatar, hasSchoolLogo) ||
     content.sections.some(sectionHasPrintableContent)
   );
 }

@@ -2,7 +2,11 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createDefaultContent } from '../model/resume.model';
-import { createResumePresentation, RESUME_PHOTO_SPEC } from '../model/resume.presentation';
+import {
+  createResumePresentation,
+  RESUME_PHOTO_SPEC,
+  SCHOOL_LOGO_SPEC,
+} from '../model/resume.presentation';
 import type { ResumeDocument } from '../model/resume.types';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
 
@@ -66,6 +70,7 @@ function createResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left',
     exportCount: 0,
     contentVersion: 4,
@@ -161,6 +166,7 @@ describe('ResumeHtmlPreview', () => {
       <ResumeHtmlPreview
         avatar="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2Q=="
         resume={resume}
+        schoolLogo="data:image/png;base64,iVBORw0KGgo="
       />,
     );
 
@@ -227,6 +233,63 @@ describe('ResumeHtmlPreview', () => {
     expect(identity).toHaveStyle({ textAlign: 'right' });
     expect(screen.getByRole('heading', { name: '林清清' })).toHaveStyle({ color: '#242126' });
     expect(sectionHeading).toHaveClass('text-[var(--resume-accent)]');
+  });
+
+  it('mirrors a square school logo across from the avatar and centers it in the media band', () => {
+    const resume = { ...createResume(), profileAlignment: 'center' as const };
+    const { container, rerender } = render(
+      <ResumeHtmlPreview
+        avatar="data:image/jpeg;base64,avatar"
+        resume={resume}
+        schoolLogo="data:image/png;base64,logo"
+      />,
+    );
+    const presentation = createResumePresentation(resume.content.formatting, 'center');
+    const header = container.querySelector('header');
+    const logo = header?.querySelector('img[src="data:image/png;base64,logo"]');
+    const avatar = header?.querySelector('img[src="data:image/jpeg;base64,avatar"]');
+
+    expect(header?.firstElementChild).toBe(logo);
+    expect(header?.lastElementChild).toBe(avatar);
+    expect(logo).toHaveClass('absolute', 'left-0');
+    expect(logo).toHaveStyle({
+      height: `${presentation.schoolLogoHeightPx}px`,
+      top: `${presentation.schoolLogoOffsetTopPx}px`,
+      width: `${presentation.schoolLogoWidthPx}px`,
+    });
+    expect(
+      Number.parseFloat((logo as HTMLImageElement).style.width) /
+        Number.parseFloat((logo as HTMLImageElement).style.height),
+    ).toBeCloseTo(SCHOOL_LOGO_SPEC.widthMm / SCHOOL_LOGO_SPEC.heightMm);
+
+    rerender(
+      <ResumeHtmlPreview
+        avatar="data:image/jpeg;base64,avatar"
+        resume={{ ...resume, profileAlignment: 'right' }}
+        schoolLogo="data:image/png;base64,logo"
+      />,
+    );
+    const rightHeader = container.querySelector('header');
+    expect(rightHeader?.firstElementChild).toHaveAttribute('src', 'data:image/jpeg;base64,avatar');
+    expect(rightHeader?.lastElementChild).toHaveAttribute('src', 'data:image/png;base64,logo');
+  });
+
+  it('prints a school logo without requiring an avatar', () => {
+    const resume = createResume();
+    resume.content.profile.fullName = '';
+    const { container } = render(
+      <ResumeHtmlPreview
+        avatar={null}
+        resume={resume}
+        schoolLogo="data:image/png;base64,logo-only"
+      />,
+    );
+
+    expect(container.querySelector('header')).toBeInTheDocument();
+    expect(container.querySelector('header img')).toHaveAttribute(
+      'src',
+      'data:image/png;base64,logo-only',
+    );
   });
 
   it('resolves section and printable-entry spacing with explicit zero overrides', () => {

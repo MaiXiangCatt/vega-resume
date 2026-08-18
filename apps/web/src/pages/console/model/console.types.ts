@@ -25,6 +25,7 @@ export type ConsoleResumeSummary = {
   createdAt: string;
   exportCount: number;
   hasAvatar: boolean;
+  hasSchoolLogo: boolean;
   id: string;
   revision: number;
   status: ResumeStatus;

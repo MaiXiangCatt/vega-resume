@@ -7,6 +7,7 @@ import { toDocument } from '@/pages/resume-editor/service/resume-editor.service'
 type PrintData = {
   document: ResumeDocument;
   avatar: string | null;
+  schoolLogo: string | null;
 };
 
 const inFlightRequests = new Map<string, Promise<PrintData>>();
@@ -40,5 +41,6 @@ async function loadPrintData(resumeId: string, token: string): Promise<PrintData
   return {
     document: toDocument(payload.resume),
     avatar: payload.avatarDataUrl ?? null,
+    schoolLogo: payload.schoolLogoDataUrl ?? null,
   };
 }

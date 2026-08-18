@@ -543,6 +543,13 @@ func openTestGormStore(t *testing.T) *gorm.DB {
 	return db
 }
 
+func TestResumeMigrationIncludesSchoolLogoKey(t *testing.T) {
+	db := openTestGormStore(t)
+	if !db.Migrator().HasColumn(&model.Resume{}, "school_logo_key") {
+		t.Fatal("resumes.school_logo_key was not migrated")
+	}
+}
+
 func ctxWithTestTimeout(t *testing.T) context.Context {
 	t.Helper()
 

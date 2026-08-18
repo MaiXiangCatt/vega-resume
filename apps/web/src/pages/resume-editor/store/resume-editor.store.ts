@@ -59,6 +59,7 @@ export const useResumeEditorStore = create<EditorState>()((set, get) => ({
             exportCount: document.exportCount,
             updatedAt: document.updatedAt,
             hasAvatar: document.hasAvatar,
+            hasSchoolLogo: document.hasSchoolLogo,
           }
         : document,
       saveStatus: state.changeVersion === savedVersion ? 'saved' : 'dirty',
@@ -71,6 +72,7 @@ export const useResumeEditorStore = create<EditorState>()((set, get) => ({
             ...state.document,
             exportCount: document.exportCount,
             hasAvatar: document.hasAvatar,
+            hasSchoolLogo: document.hasSchoolLogo,
             revision: document.revision,
             updatedAt: document.updatedAt,
           }

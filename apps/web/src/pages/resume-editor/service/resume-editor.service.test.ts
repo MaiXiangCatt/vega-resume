@@ -24,4 +24,19 @@ describe('resume editor service', () => {
       method: 'PUT',
     });
   });
+
+  it('uploads the cropped school logo as PNG bytes', async () => {
+    const schoolLogo = new Blob(['png-bytes'], { type: 'image/png' });
+    vi.mocked(httpRequest).mockRejectedValueOnce(new Error('stop after request capture'));
+
+    await expect(resumeEditorService.putSchoolLogo('resume-1', schoolLogo)).rejects.toThrow(
+      'stop after request capture',
+    );
+
+    expect(httpRequest).toHaveBeenCalledWith('/api/resumes/resume-1/school-logo', {
+      body: schoolLogo,
+      headers: { 'Content-Type': 'image/png' },
+      method: 'PUT',
+    });
+  });
 });

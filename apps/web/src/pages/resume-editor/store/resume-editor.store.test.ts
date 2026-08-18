@@ -10,6 +10,7 @@ const document: ResumeDocument = {
   status: 'draft',
   revision: 1,
   hasAvatar: false,
+  hasSchoolLogo: false,
   profileAlignment: 'left',
   exportCount: 0,
   contentVersion: 4,
@@ -39,13 +40,20 @@ describe('resume editor store', () => {
     const store = useResumeEditorStore.getState();
     store.load(structuredClone(document));
     store.updateDraft((current) => ({ ...current, title: 'local' }));
-    store.mergeServerMetadata({ ...document, revision: 2, hasAvatar: true, exportCount: 1 });
+    store.mergeServerMetadata({
+      ...document,
+      revision: 2,
+      hasAvatar: true,
+      hasSchoolLogo: true,
+      exportCount: 1,
+    });
 
     const state = useResumeEditorStore.getState();
     expect(state.document).toMatchObject({
       title: 'local',
       revision: 2,
       hasAvatar: true,
+      hasSchoolLogo: true,
       exportCount: 1,
     });
     expect(state.saveStatus).toBe('dirty');

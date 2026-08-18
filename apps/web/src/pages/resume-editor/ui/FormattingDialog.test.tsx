@@ -14,6 +14,7 @@ function createResume(): ResumeDocument {
     status: 'draft',
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'center',
     exportCount: 0,
     contentVersion: 4,

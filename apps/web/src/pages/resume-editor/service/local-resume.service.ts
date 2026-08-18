@@ -24,6 +24,7 @@ const ASSET_STORE = 'guest-assets';
 const LEGACY_RESUME_KEY = 'primary';
 const LEGACY_RESUME_ID = 'guest-primary';
 const LEGACY_AVATAR_KEY = 'avatar';
+const LEGACY_SCHOOL_LOGO_KEY = 'school-logo';
 const TITLE_LIMIT = 80;
 
 type StoredResumeRecord = {
@@ -119,6 +120,7 @@ export function createLocalResumeService(
       const records = await transaction.objectStore(RESUME_STORE).getAll();
       const documents = new Map<string, ResumeDocument>();
       const avatars = new Map<string, Blob>();
+      const schoolLogos = new Map<string, Blob>();
 
       for (const record of records) {
         const document = parseStoredRecord(record);
@@ -128,25 +130,40 @@ export function createLocalResumeService(
       for (const document of documents.values()) {
         const avatar =
           (await transaction.objectStore(ASSET_STORE).get(assetKey(document.id))) ?? null;
+        const schoolLogo =
+          (await transaction.objectStore(ASSET_STORE).get(schoolLogoAssetKey(document.id))) ?? null;
         if (avatar) avatars.set(document.id, avatar);
+        if (schoolLogo) schoolLogos.set(document.id, schoolLogo);
         document.hasAvatar = Boolean(avatar);
+        document.hasSchoolLogo = Boolean(schoolLogo);
       }
       await transaction.done;
-      return { avatars, documents };
+      return { avatars, schoolLogos, documents };
     });
   }
 
-  async function get(resumeId: string): Promise<{ avatar: Blob | null; document: ResumeDocument }> {
+  async function get(resumeId: string): Promise<{
+    avatar: Blob | null;
+    schoolLogo: Blob | null;
+    document: ResumeDocument;
+  }> {
     return withDatabase(async (database) => {
       const transaction = database.transaction([RESUME_STORE, ASSET_STORE], 'readonly');
       const stored = await transaction.objectStore(RESUME_STORE).get(resumeKey(resumeId));
       if (!stored) throw new LocalResumeNotFoundError();
       const document = parseStoredRecord(stored, resumeId);
       const avatar = (await transaction.objectStore(ASSET_STORE).get(assetKey(resumeId))) ?? null;
+      const schoolLogo =
+        (await transaction.objectStore(ASSET_STORE).get(schoolLogoAssetKey(resumeId))) ?? null;
       await transaction.done;
       return {
         avatar,
-        document: { ...document, hasAvatar: Boolean(avatar) },
+        schoolLogo,
+        document: {
+          ...document,
+          hasAvatar: Boolean(avatar),
+          hasSchoolLogo: Boolean(schoolLogo),
+        },
       };
     });
   }
@@ -172,9 +189,11 @@ export function createLocalResumeService(
   async function importResume(envelope: ResumeImportEnvelope): Promise<ResumeDocument> {
     const parsed = parseImportEnvelope(envelope);
     const avatar = parsed.avatar ? dataUrlToBlob(parsed.avatar) : null;
+    const schoolLogo = parsed.schoolLogo ? dataUrlToBlob(parsed.schoolLogo) : null;
     const document = createDocument(createId(), validateTitle(parsed.title), now(), {
       content: parsed.content,
       hasAvatar: Boolean(avatar),
+      hasSchoolLogo: Boolean(schoolLogo),
       profileAlignment: parsed.profileAlignment,
     });
     return withDatabase(async (database) => {
@@ -182,6 +201,8 @@ export function createLocalResumeService(
       await assertBelowLimit(transaction.objectStore(RESUME_STORE));
       await transaction.objectStore(RESUME_STORE).add(toRecord(document));
       if (avatar) await transaction.objectStore(ASSET_STORE).put(avatar, assetKey(document.id));
+      if (schoolLogo)
+        await transaction.objectStore(ASSET_STORE).put(schoolLogo, schoolLogoAssetKey(document.id));
       await transaction.done;
       return cloneDocument(document);
     });
@@ -207,10 +228,16 @@ export function createLocalResumeService(
         updatedAt: copiedAt,
       };
       const avatar = (await transaction.objectStore(ASSET_STORE).get(assetKey(resumeId))) ?? null;
+      const schoolLogo =
+        (await transaction.objectStore(ASSET_STORE).get(schoolLogoAssetKey(resumeId))) ?? null;
       document.hasAvatar = Boolean(avatar);
+      document.hasSchoolLogo = Boolean(schoolLogo);
       await resumeStore.add(toRecord(document));
       if (avatar) {
         await transaction.objectStore(ASSET_STORE).put(avatar, assetKey(document.id));
+      }
+      if (schoolLogo) {
+        await transaction.objectStore(ASSET_STORE).put(schoolLogo, schoolLogoAssetKey(document.id));
       }
       await transaction.done;
       return cloneDocument(document);
@@ -253,6 +280,7 @@ export function createLocalResumeService(
   ): Promise<ResumeDocument> {
     const parsed = parseImportEnvelope(envelope);
     const avatar = parsed.avatar ? dataUrlToBlob(parsed.avatar) : null;
+    const schoolLogo = parsed.schoolLogo ? dataUrlToBlob(parsed.schoolLogo) : null;
     return withDatabase(async (database) => {
       const transaction = database.transaction([RESUME_STORE, ASSET_STORE], 'readwrite');
       const store = transaction.objectStore(RESUME_STORE);
@@ -268,6 +296,7 @@ export function createLocalResumeService(
           content: parsed.content,
           contentVersion: 4,
           hasAvatar: Boolean(avatar),
+          hasSchoolLogo: Boolean(schoolLogo),
         },
         expectedRevision,
         now(),
@@ -275,6 +304,9 @@ export function createLocalResumeService(
       await store.put(toRecord(saved));
       if (avatar) await transaction.objectStore(ASSET_STORE).put(avatar, assetKey(resumeId));
       else await transaction.objectStore(ASSET_STORE).delete(assetKey(resumeId));
+      if (schoolLogo)
+        await transaction.objectStore(ASSET_STORE).put(schoolLogo, schoolLogoAssetKey(resumeId));
+      else await transaction.objectStore(ASSET_STORE).delete(schoolLogoAssetKey(resumeId));
       await transaction.done;
       return cloneDocument(saved);
     });
@@ -286,6 +318,17 @@ export function createLocalResumeService(
 
   async function deleteAvatar(document: ResumeDocument): Promise<ResumeDocument> {
     return updateAvatar(document, null);
+  }
+
+  async function putSchoolLogo(
+    document: ResumeDocument,
+    schoolLogo: Blob,
+  ): Promise<ResumeDocument> {
+    return updateSchoolLogo(document, schoolLogo);
+  }
+
+  async function deleteSchoolLogo(document: ResumeDocument): Promise<ResumeDocument> {
+    return updateSchoolLogo(document, null);
   }
 
   async function updateAvatar(
@@ -312,6 +355,31 @@ export function createLocalResumeService(
     });
   }
 
+  async function updateSchoolLogo(
+    document: ResumeDocument,
+    schoolLogo: Blob | null,
+  ): Promise<ResumeDocument> {
+    return withDatabase(async (database) => {
+      const transaction = database.transaction([RESUME_STORE, ASSET_STORE], 'readwrite');
+      const store = transaction.objectStore(RESUME_STORE);
+      const stored = await store.get(resumeKey(document.id));
+      if (!stored) throw new LocalResumeNotFoundError();
+      const current = parseStoredRecord(stored, document.id);
+      assertRevision(current, document.revision);
+      const saved = nextRevision(
+        { ...validateDocument(document), hasSchoolLogo: Boolean(schoolLogo) },
+        document.revision,
+        now(),
+      );
+      await store.put(toRecord(saved));
+      if (schoolLogo)
+        await transaction.objectStore(ASSET_STORE).put(schoolLogo, schoolLogoAssetKey(document.id));
+      else await transaction.objectStore(ASSET_STORE).delete(schoolLogoAssetKey(document.id));
+      await transaction.done;
+      return cloneDocument(saved);
+    });
+  }
+
   async function deleteResume(resumeId: string): Promise<void> {
     await withDatabase(async (database) => {
       const transaction = database.transaction([RESUME_STORE, ASSET_STORE], 'readwrite');
@@ -319,6 +387,7 @@ export function createLocalResumeService(
       if (!(await store.get(resumeKey(resumeId)))) throw new LocalResumeNotFoundError();
       await store.delete(resumeKey(resumeId));
       await transaction.objectStore(ASSET_STORE).delete(assetKey(resumeId));
+      await transaction.objectStore(ASSET_STORE).delete(schoolLogoAssetKey(resumeId));
       await transaction.done;
     });
   }
@@ -377,6 +446,7 @@ export function createLocalResumeService(
     create,
     delete: deleteResume,
     deleteAvatar,
+    deleteSchoolLogo,
     get,
     has,
     import: importResume,
@@ -384,6 +454,7 @@ export function createLocalResumeService(
     loadLibrary,
     overwrite,
     putAvatar,
+    putSchoolLogo,
     recordExport,
     retry,
     replaceImport,
@@ -442,7 +513,9 @@ function createDocument(
   id: string,
   title: string,
   currentTime: Date,
-  overrides: Partial<Pick<ResumeDocument, 'content' | 'hasAvatar' | 'profileAlignment'>> = {},
+  overrides: Partial<
+    Pick<ResumeDocument, 'content' | 'hasAvatar' | 'hasSchoolLogo' | 'profileAlignment'>
+  > = {},
 ): ResumeDocument {
   const timestamp = currentTime.toISOString();
   return {
@@ -451,6 +524,7 @@ function createDocument(
     status: 'draft',
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment: 'left',
     exportCount: 0,
     contentVersion: 4,
@@ -474,6 +548,7 @@ function validateDocument(value: unknown): ResumeDocument {
     !Number.isInteger(document.revision) ||
     document.revision < 1 ||
     typeof document.hasAvatar !== 'boolean' ||
+    (document.hasSchoolLogo !== undefined && typeof document.hasSchoolLogo !== 'boolean') ||
     typeof document.exportCount !== 'number' ||
     !Number.isInteger(document.exportCount) ||
     document.exportCount < 0 ||
@@ -497,6 +572,7 @@ function validateDocument(value: unknown): ResumeDocument {
     status: document.status,
     revision: document.revision,
     hasAvatar: document.hasAvatar,
+    hasSchoolLogo: document.hasSchoolLogo === true,
     profileAlignment,
     exportCount: document.exportCount,
     contentVersion: 4,
@@ -564,6 +640,10 @@ function assetKey(resumeId: string): string {
   return resumeId === LEGACY_RESUME_ID ? LEGACY_AVATAR_KEY : `avatar:${resumeId}`;
 }
 
+function schoolLogoAssetKey(resumeId: string): string {
+  return resumeId === LEGACY_RESUME_ID ? LEGACY_SCHOOL_LOGO_KEY : `school-logo:${resumeId}`;
+}
+
 function nextRevision(
   document: ResumeDocument,
   revision: number,
@@ -602,6 +682,7 @@ function toSummary(document: ResumeDocument) {
     createdAt: document.createdAt,
     exportCount: document.exportCount,
     hasAvatar: document.hasAvatar,
+    hasSchoolLogo: document.hasSchoolLogo,
     id: document.id,
     revision: document.revision,
     status: document.status,

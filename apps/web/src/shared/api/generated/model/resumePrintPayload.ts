@@ -14,4 +14,9 @@ export interface ResumePrintPayload {
      * @nullable
      */
   avatarDataUrl?: string | null;
+  /**
+     * Inline data URL of the school logo PNG, if any.
+     * @nullable
+     */
+  schoolLogoDataUrl?: string | null;
 }

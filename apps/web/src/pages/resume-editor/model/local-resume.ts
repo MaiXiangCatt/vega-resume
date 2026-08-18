@@ -18,6 +18,7 @@ export type LocalResumeSummary = Pick<
   | 'createdAt'
   | 'exportCount'
   | 'hasAvatar'
+  | 'hasSchoolLogo'
   | 'id'
   | 'revision'
   | 'status'
@@ -42,6 +43,7 @@ export type LocalResumeStats = {
 
 export type LocalResumeLibrarySnapshot = {
   avatars: Map<string, Blob>;
+  schoolLogos: Map<string, Blob>;
   documents: Map<string, ResumeDocument>;
 };
 
@@ -51,13 +53,19 @@ export type LocalResumeRepository = {
   create(title?: string): Promise<ResumeDocument>;
   delete(resumeId: string): Promise<void>;
   deleteAvatar(document: ResumeDocument): Promise<ResumeDocument>;
-  get(resumeId: string): Promise<{ avatar: Blob | null; document: ResumeDocument }>;
+  deleteSchoolLogo(document: ResumeDocument): Promise<ResumeDocument>;
+  get(resumeId: string): Promise<{
+    avatar: Blob | null;
+    schoolLogo: Blob | null;
+    document: ResumeDocument;
+  }>;
   has(resumeId: string): Promise<boolean>;
   import(envelope: ResumeImportEnvelope): Promise<ResumeDocument>;
   list(query: LocalResumeListQuery): Promise<LocalResumeListPayload>;
   loadLibrary(): Promise<LocalResumeLibrarySnapshot>;
   overwrite(document: ResumeDocument): Promise<ResumeDocument>;
   putAvatar(document: ResumeDocument, avatar: Blob): Promise<ResumeDocument>;
+  putSchoolLogo(document: ResumeDocument, schoolLogo: Blob): Promise<ResumeDocument>;
   recordExport(resumeId: string): Promise<ResumeDocument>;
   retry(): Promise<LocalResumeLibrarySnapshot>;
   replaceImport(

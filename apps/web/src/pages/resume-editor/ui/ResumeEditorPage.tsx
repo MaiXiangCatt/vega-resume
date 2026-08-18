@@ -72,6 +72,7 @@ import { AvatarCropDialog } from './AvatarCropDialog';
 import { ProfileEditor, SectionEditor } from './EditorForms';
 import { LocalPdfPreview } from './LocalPdfPreview';
 import { ResumeHtmlPreview } from './ResumeHtmlPreview';
+import { SchoolLogoCropDialog } from './SchoolLogoCropDialog';
 import { StructurePanel } from './StructurePanel';
 
 export function ResumeEditorPage({
@@ -91,11 +92,13 @@ export function ResumeEditorPage({
   const {
     avatarUrl,
     deleteAvatar: removeAvatar,
+    deleteSchoolLogo: removeSchoolLogo,
     durability,
     edit,
     exportPdf,
     flushSave,
     getAvatarDataUrl,
+    getSchoolLogoDataUrl,
     load,
     overwrite,
     pdfPreview,
@@ -103,12 +106,15 @@ export function ResumeEditorPage({
     replaceImport,
     retryStorage,
     saveAvatar: persistAvatar,
+    saveSchoolLogo: persistSchoolLogo,
+    schoolLogoUrl,
   } = useResumeEditor(resumeId, mode);
   const [activeId, setActiveId] = useState('profile');
   const [formatOpen, setFormatOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [customName, setCustomName] = useState('');
   const [cropSource, setCropSource] = useState<string | null>(null);
+  const [schoolLogoCropSource, setSchoolLogoCropSource] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<ResumeSection | null>(null);
   const [importEnvelope, setImportEnvelope] = useState<ResumeImportEnvelope | null>(null);
   const [issues, setIssues] = useState<{ mode: 'complete' | 'export'; values: string[] } | null>(
@@ -119,6 +125,7 @@ export function ResumeEditorPage({
   const [clearLocalDataOpen, setClearLocalDataOpen] = useState(false);
   const [isClearingLocalData, setClearingLocalData] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
+  const schoolLogoInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const analyticsEnabled = useAnalyticsStore((state) => state.enabled);
   const openPrivacySettings = useAnalyticsStore((state) => state.openSettings);
@@ -127,9 +134,14 @@ export function ResumeEditorPage({
   const deferredDocument = useDeferredValue(document);
   const isReadOnly = mode === 'local' && durability === 'read-only';
   const visibleAvatar = document?.hasAvatar ? avatarUrl : null;
+  const visibleSchoolLogo = document?.hasSchoolLogo ? schoolLogoUrl : null;
   const activeSection =
     document?.content.sections.find((section) => section.id === activeId) ?? null;
   useAnalyticsWorkspace(mode, !isLoading && Boolean(document));
+
+  function openPrivacySettingsFromMenu() {
+    window.setTimeout(openPrivacySettings, 0);
+  }
 
   function retryReadOnlyStorage() {
     setFormatOpen(false);
@@ -139,6 +151,10 @@ export function ResumeEditorPage({
     if (cropSource) {
       URL.revokeObjectURL(cropSource);
       setCropSource(null);
+    }
+    if (schoolLogoCropSource) {
+      URL.revokeObjectURL(schoolLogoCropSource);
+      setSchoolLogoCropSource(null);
     }
     void retryStorage();
   }
@@ -220,6 +236,25 @@ export function ResumeEditorPage({
     }
   }
 
+  async function saveSchoolLogo(blob: Blob) {
+    try {
+      await persistSchoolLogo(blob);
+      setSchoolLogoCropSource(null);
+      toast.success(mode === 'local' ? '校徽已保存到本机' : '校徽已更新');
+    } catch {
+      toast.error('校徽保存失败，请稍后重试');
+    }
+  }
+
+  async function deleteSchoolLogo() {
+    try {
+      await removeSchoolLogo();
+      toast.success('校徽已删除');
+    } catch {
+      toast.error('校徽删除失败，请稍后重试');
+    }
+  }
+
   async function readImport(file: File) {
     try {
       setImportEnvelope(parseImportEnvelope(JSON.parse(await file.text())));
@@ -251,6 +286,7 @@ export function ResumeEditorPage({
       profileAlignment: document.profileAlignment,
       content: document.content,
       avatar: await getAvatarDataUrl(),
+      schoolLogo: await getSchoolLogoDataUrl(),
     };
     downloadBlob(
       new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }),
@@ -290,7 +326,7 @@ export function ResumeEditorPage({
 
   function requestExport() {
     if (!document) return;
-    const values = completionIssues(document.content, document.hasAvatar);
+    const values = completionIssues(document.content, document.hasAvatar, document.hasSchoolLogo);
     if (values.length) setIssues({ mode: 'export', values });
     else void runPdfExport();
   }
@@ -303,7 +339,7 @@ export function ResumeEditorPage({
       }, true);
       return;
     }
-    const values = completionIssues(document.content, document.hasAvatar);
+    const values = completionIssues(document.content, document.hasAvatar, document.hasSchoolLogo);
     if (values.length) setIssues({ mode: 'complete', values });
     else
       mutate((draft) => {
@@ -489,7 +525,7 @@ export function ResumeEditorPage({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={returnFromEditor}>我的控制台</DropdownMenuItem>
                 {analyticsEnabled ? (
-                  <DropdownMenuItem onClick={openPrivacySettings}>
+                  <DropdownMenuItem onClick={openPrivacySettingsFromMenu}>
                     <ShieldCheck aria-hidden="true" />
                     隐私设置
                   </DropdownMenuItem>
@@ -509,7 +545,7 @@ export function ResumeEditorPage({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={openPrivacySettings}>
+                    <DropdownMenuItem onClick={openPrivacySettingsFromMenu}>
                       <ShieldCheck aria-hidden="true" />
                       隐私设置
                     </DropdownMenuItem>
@@ -556,6 +592,7 @@ export function ResumeEditorPage({
           <StructurePanel
             activeId={activeId}
             hasAvatar={document.hasAvatar}
+            hasSchoolLogo={document.hasSchoolLogo}
             onAdd={() => setAddOpen(true)}
             onFormat={() => setFormatOpen(true)}
             onMove={(sections) =>
@@ -596,7 +633,10 @@ export function ResumeEditorPage({
                 })
               }
               onDeleteAvatar={() => void deleteAvatar()}
+              onDeleteSchoolLogo={() => void deleteSchoolLogo()}
+              onSchoolLogo={() => schoolLogoInput.current?.click()}
               profile={document.content.profile}
+              schoolLogo={visibleSchoolLogo}
             />
           ) : activeSection ? (
             <SectionEditor
@@ -608,12 +648,27 @@ export function ResumeEditorPage({
           ) : null}
           <input
             accept="image/jpeg,image/png,image/webp"
+            aria-label="上传头像原图"
             hidden
             ref={avatarInput}
             type="file"
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file && file.size <= 5 * 1024 * 1024) setCropSource(URL.createObjectURL(file));
+              else if (file) toast.error('原图不能超过 5 MB');
+              event.target.value = '';
+            }}
+          />
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="上传校徽原图"
+            hidden
+            ref={schoolLogoInput}
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file && file.size <= 5 * 1024 * 1024)
+                setSchoolLogoCropSource(URL.createObjectURL(file));
               else if (file) toast.error('原图不能超过 5 MB');
               event.target.value = '';
             }}
@@ -628,7 +683,11 @@ export function ResumeEditorPage({
           {mode === 'local' ? (
             <LocalPdfPreview preview={pdfPreview} />
           ) : deferredDocument ? (
-            <ResumeHtmlPreview avatar={visibleAvatar} resume={deferredDocument} />
+            <ResumeHtmlPreview
+              avatar={visibleAvatar}
+              resume={deferredDocument}
+              schoolLogo={visibleSchoolLogo}
+            />
           ) : null}
         </section>
       </main>
@@ -668,6 +727,16 @@ export function ResumeEditorPage({
             setCropSource(null);
           }}
           onSave={saveAvatar}
+        />
+      ) : null}
+      {schoolLogoCropSource && !isReadOnly ? (
+        <SchoolLogoCropDialog
+          image={schoolLogoCropSource}
+          onClose={() => {
+            URL.revokeObjectURL(schoolLogoCropSource);
+            setSchoolLogoCropSource(null);
+          }}
+          onSave={saveSchoolLogo}
         />
       ) : null}
       {pendingRemove && !isReadOnly ? (

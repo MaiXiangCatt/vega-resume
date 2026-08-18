@@ -26,6 +26,7 @@ const resume = {
   createdAt: '2026-07-20T08:00:00Z',
   exportCount: 0,
   hasAvatar: false,
+  hasSchoolLogo: false,
   id: '2b305475-8ed1-428d-bd35-a53957592ba6',
   profileAlignment: 'left' as const,
   revision: 1,

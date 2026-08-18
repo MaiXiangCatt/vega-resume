@@ -50,6 +50,7 @@ var (
 	ErrResumeInvalidSchema   = &AppError{Code: 103004, Message: "简历数据结构不合法", HTTPStatus: http.StatusBadRequest}
 	ErrResumeConflict        = &AppError{Code: 103005, Message: "简历已在其他页面更新", HTTPStatus: http.StatusConflict}
 	ErrAvatarInvalid         = &AppError{Code: 105003, Message: "头像必须是 500×700 的 JPEG 图片", HTTPStatus: http.StatusBadRequest}
+	ErrSchoolLogoInvalid     = &AppError{Code: 105004, Message: "校徽必须是 500×500 的 PNG 图片", HTTPStatus: http.StatusBadRequest}
 	ErrFileTooLarge          = &AppError{Code: 105002, Message: "上传文件超过大小限制", HTTPStatus: http.StatusBadRequest}
 	ErrPdfRenderFailed       = &AppError{Code: 106001, Message: "PDF 生成失败，请稍后重试", HTTPStatus: http.StatusInternalServerError}
 	ErrPdfBusy               = &AppError{Code: 106002, Message: "PDF 导出繁忙，请稍后重试", HTTPStatus: http.StatusServiceUnavailable}

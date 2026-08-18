@@ -66,6 +66,7 @@ function createResume(profileAlignment: ResumeDocument['profileAlignment']): Res
     status: 'draft',
     revision: 1,
     hasAvatar: false,
+    hasSchoolLogo: false,
     profileAlignment,
     exportCount: 0,
     contentVersion: 4,

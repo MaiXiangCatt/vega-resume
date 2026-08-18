@@ -11,6 +11,13 @@ export const RESUME_PHOTO_SPEC = {
   widthMm: 25,
 } as const;
 
+export const SCHOOL_LOGO_SPEC = {
+  heightMm: 25,
+  outputHeightPx: 500,
+  outputWidthPx: 500,
+  widthMm: 25,
+} as const;
+
 export const pxToPt = (value: number) => value * 0.75;
 export const mmToPx = (value: number) => (value * CSS_PIXELS_PER_INCH) / MILLIMETERS_PER_INCH;
 
@@ -25,6 +32,8 @@ export function createResumePresentation(
   const body = formatting.bodyFontSizePx;
   const photoGapPx = body * 2;
   const photoWidthPx = mmToPx(RESUME_PHOTO_SPEC.widthMm);
+  const photoHeightPx = mmToPx(RESUME_PHOTO_SPEC.heightMm);
+  const schoolLogoHeightPx = mmToPx(SCHOOL_LOGO_SPEC.heightMm);
   return {
     bodyColor: '#242126',
     contactsColumnGapPx: body,
@@ -35,12 +44,15 @@ export function createResumePresentation(
     nameLetterSpacingPx: formatting.nameFontSizePx * -0.02,
     nameLineHeight: 1.08,
     photoGapPx,
-    photoHeightPx: mmToPx(RESUME_PHOTO_SPEC.heightMm),
+    photoHeightPx,
     photoWidthPx,
     profileTextAlign: profileAlignment,
     profileAvatarInsetPx: photoWidthPx + photoGapPx,
     roleMarginTopPx: body * 0.45,
     sectionContentMarginTopPx: body * 0.8,
     sectionTitlePaddingBottomPx: formatting.sectionTitleFontSizePx * 0.35,
+    schoolLogoHeightPx,
+    schoolLogoOffsetTopPx: (photoHeightPx - schoolLogoHeightPx) / 2,
+    schoolLogoWidthPx: mmToPx(SCHOOL_LOGO_SPEC.widthMm),
   };
 }
