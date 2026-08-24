@@ -13,6 +13,7 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
       phone: '',
       email: '',
       location: '',
+      politicalStatus: '',
       links: [],
     },
     sections: [
@@ -157,9 +158,12 @@ test('edits and auto-saves a dynamic desktop resume', async ({ page }) => {
 
   await page.getByLabel('姓名').fill('林清清');
   await page.getByLabel('目标岗位').fill('产品设计师');
+  await page.getByLabel('政治面貌').fill('中共党员');
   await expect(preview.getByRole('heading', { name: '林清清' })).toBeVisible();
   await expect(preview.getByText('产品设计师')).toBeVisible();
+  await expect(preview.getByText('政治面貌：中共党员')).toBeVisible();
   await expect.poll(() => revision, { timeout: 5000 }).toBeGreaterThan(1);
+  await expect.poll(() => content.profile.politicalStatus, { timeout: 5000 }).toBe('中共党员');
   await expect(page.getByText('已保存', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: '隐藏 基本信息' }).click();

@@ -56,6 +56,8 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
   } as CSSProperties;
   const contacts = [profile.phone, profile.email, profile.location].filter(Boolean);
   const printableLinks = profile.links.filter((link) => link.label && link.url);
+  const politicalStatus = profile.politicalStatus.trim();
+  const hasPrintableContacts = Boolean(contacts.length || printableLinks.length);
 
   return (
     <Card
@@ -187,6 +189,21 @@ export const ResumeHtmlPreview = memo(function ResumeHtmlPreview({
                     </Link>
                   ))}
                 </div>
+              ) : null}
+              {politicalStatus ? (
+                <p
+                  data-resume-profile-field="political-status"
+                  style={{
+                    color: presentation.bodyColor,
+                    fontSize: formatting.bodyFontSizePx,
+                    marginTop: hasPrintableContacts
+                      ? presentation.contactsRowGapPx
+                      : presentation.contactsMarginTopPx,
+                    textAlign: presentation.profileTextAlign,
+                  }}
+                >
+                  政治面貌：{politicalStatus}
+                </p>
               ) : null}
             </div>
             {visibleAvatar && !avatarOnLeft ? (

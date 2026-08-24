@@ -46,6 +46,7 @@ async function seedLegacyResume(avatar: Blob | null = null) {
     formatting: Record<string, unknown>;
   };
   delete content.profile.enabled;
+  delete content.profile.politicalStatus;
   delete content.formatting.entryGapPx;
   const database = await openLocalDatabase();
   await database.put('guest-resume', {

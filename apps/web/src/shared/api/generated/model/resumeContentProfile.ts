@@ -9,5 +9,10 @@
 export type ResumeContentProfile = {
   /** Required by content version 4. Controls whether the profile header is previewed and printed. */
   enabled?: boolean;
+  /**
+     * Optional political status displayed below the contact information.
+     * @maxLength 320
+     */
+  politicalStatus?: string;
   [key: string]: unknown;
  };

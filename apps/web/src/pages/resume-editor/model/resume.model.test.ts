@@ -24,6 +24,7 @@ describe('resume editor model', () => {
     expect(content.sections.find((section) => section.type === 'skills')).toMatchObject({
       description: '',
     });
+    expect(content.profile.politicalStatus).toBe('');
     expect(content.formatting).toEqual({
       nameFontSizePx: 20,
       sectionTitleFontSizePx: 16,
@@ -42,6 +43,7 @@ describe('resume editor model', () => {
     const legacyContent = structuredClone(createDefaultContent()) as Record<string, unknown>;
     const profile = legacyContent.profile as Record<string, unknown>;
     delete profile.enabled;
+    delete profile.politicalStatus;
     const formatting = legacyContent.formatting as Record<string, unknown>;
     delete formatting.entryGapPx;
     formatting.bodyFontSizePx = 16;
@@ -59,6 +61,7 @@ describe('resume editor model', () => {
       content: {
         profile: {
           enabled: true,
+          politicalStatus: '',
         },
         formatting: {
           bodyFontSizePx: 16,
@@ -90,6 +93,29 @@ describe('resume editor model', () => {
 
     work.items[0].spacingBeforePx = 1.5;
     expect(() => parseResumeContent(content, 4)).toThrow();
+  });
+
+  it('normalizes an omitted v4 political status and validates supplied values', () => {
+    const legacyV4 = structuredClone(createDefaultContent()) as Record<string, unknown>;
+    delete (legacyV4.profile as Record<string, unknown>).politicalStatus;
+
+    expect(parseResumeContent(legacyV4, 4).profile.politicalStatus).toBe('');
+
+    const content = createDefaultContent();
+    content.profile.politicalStatus = '中共党员';
+    expect(parseResumeContent(content, 4).profile.politicalStatus).toBe('中共党员');
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        profile: { ...content.profile, politicalStatus: 1 },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseResumeContent({
+        ...content,
+        profile: { ...content.profile, politicalStatus: '党'.repeat(321) },
+      }),
+    ).toThrow();
   });
 
   it('rejects legacy and out-of-range formatting', () => {
@@ -160,13 +186,16 @@ describe('resume editor model', () => {
       schoolLogo: 'data:image/png;base64,c2Nob29sLWxvZ28=',
       content: createDefaultContent(),
     };
+    envelope.content.profile.politicalStatus = '中共党员';
 
     expect(parseImportEnvelope(envelope).schoolLogo).toBe(envelope.schoolLogo);
+    expect(parseImportEnvelope(envelope).content.profile.politicalStatus).toBe('中共党员');
     expect(() =>
       parseImportEnvelope({ ...envelope, schoolLogo: 'data:image/jpeg;base64,bG9nbw==' }),
     ).toThrow();
     const v3Content = structuredClone(createDefaultContent()) as Record<string, unknown>;
     delete (v3Content.profile as Record<string, unknown>).enabled;
+    delete (v3Content.profile as Record<string, unknown>).politicalStatus;
     expect(
       parseImportEnvelope({
         version: 3,
@@ -267,6 +296,7 @@ describe('resume editor model', () => {
   it('migrates v3 profile visibility and validates completion against printable output', () => {
     const legacyContent = structuredClone(createDefaultContent()) as Record<string, unknown>;
     delete (legacyContent.profile as Record<string, unknown>).enabled;
+    delete (legacyContent.profile as Record<string, unknown>).politicalStatus;
 
     expect(parseResumeContent(legacyContent, 3).profile.enabled).toBe(true);
 

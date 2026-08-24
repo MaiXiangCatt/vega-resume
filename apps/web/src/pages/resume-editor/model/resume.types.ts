@@ -16,6 +16,7 @@ export type ResumeProfile = {
   phone: string;
   email: string;
   location: string;
+  politicalStatus: string;
   links: ContactLink[];
 };
 

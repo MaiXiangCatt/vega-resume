@@ -46,6 +46,7 @@ test('prints a short resume on a white page without leaking the token into the r
               phone: '13800000000',
               email: 'qingqing@example.com',
               location: '杭州',
+              politicalStatus: '中共党员',
               links: [],
             },
             sections: [
@@ -85,6 +86,7 @@ test('prints a short resume on a white page without leaking the token into the r
 
   const preview = page.getByLabel('短简历 A4 实时预览');
   await expect(preview).toBeVisible();
+  await expect(preview.getByText('政治面貌：中共党员')).toBeVisible();
   await expect(preview).toHaveCSS('width', '1440px');
   expect(printRequests).toBe(1);
 

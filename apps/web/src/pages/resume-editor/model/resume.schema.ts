@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const id = z.string().min(1);
 const text = z.string().max(10_000);
+const politicalStatus = z.string().max(320);
 const month = z.string().regex(/^$|^\d{4}-(0[1-9]|1[0-2])$/);
 const integerBetween = (minimum: number, maximum: number) =>
   z.number().int().min(minimum).max(maximum);
@@ -140,7 +141,9 @@ const profileV3Schema = z
   })
   .strict();
 
-const profileSchema = profileV3Schema.extend({ enabled: z.boolean() }).strict();
+const profileSchema = profileV3Schema
+  .extend({ enabled: z.boolean(), politicalStatus: politicalStatus.default('') })
+  .strict();
 
 const pageMarginSchema = z
   .object({

@@ -232,6 +232,7 @@ func TestResumeServiceImportsAndMigratesVersionedContent(t *testing.T) {
 
 	v2 := service.DefaultResumeContent()
 	delete(v2["profile"].(map[string]any), "enabled")
+	delete(v2["profile"].(map[string]any), "politicalStatus")
 	delete(v2["formatting"].(map[string]any), "entryGapPx")
 	classic := "classic-professional"
 	migrated, err := resumes.Import(context.Background(), userID, service.ImportResumeInput{
@@ -262,6 +263,7 @@ func TestResumeServiceReadsV2LazilyAndUpgradesOnCopy(t *testing.T) {
 	userID := uuid.New()
 	v2 := service.DefaultResumeContent()
 	delete(v2["profile"].(map[string]any), "enabled")
+	delete(v2["profile"].(map[string]any), "politicalStatus")
 	delete(v2["formatting"].(map[string]any), "entryGapPx")
 	raw, err := json.Marshal(v2)
 	if err != nil {

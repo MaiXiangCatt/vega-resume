@@ -43,6 +43,7 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
   await page.getByLabel('目标岗位').fill('全站开发工程师');
   await page.getByLabel('手机号').fill('12345');
   await page.getByLabel('邮箱').fill('local@example.com');
+  await page.getByLabel('政治面貌').fill('群众');
   await expect
     .poll(async () => visibleCanvasPreview(page).getAttribute('data-preview-key'), {
       timeout: 30_000,
@@ -57,6 +58,7 @@ test('local resume persists, refreshes PDF preview and downloads the current PDF
   await page.reload();
   await expect(page.getByLabel('简历标题')).toHaveValue('本地前端简历');
   await expect(page.getByLabel('姓名')).toHaveValue('测试名字');
+  await expect(page.getByLabel('政治面貌')).toHaveValue('群众');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 PDF' }).click();

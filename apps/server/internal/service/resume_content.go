@@ -32,7 +32,7 @@ func DefaultResumeContent() map[string]any {
 	return map[string]any{
 		"profile": map[string]any{
 			"enabled": true, "fullName": "", "targetRole": "", "phone": "", "email": "", "location": "",
-			"links": []any{},
+			"politicalStatus": "", "links": []any{},
 		},
 		"sections": []any{
 			map[string]any{"id": "summary", "type": "summary", "title": "个人简介", "enabled": true, "text": ""},
@@ -85,7 +85,11 @@ func validateProfile(profile map[string]any, version int) bool {
 	allowed := map[string]bool{"fullName": true, "targetRole": true, "phone": true, "email": true, "location": true, "links": true}
 	if version == ContentVersionV4 {
 		allowed["enabled"] = true
+		allowed["politicalStatus"] = true
 		if _, ok := profile["enabled"].(bool); !ok {
+			return false
+		}
+		if value, exists := profile["politicalStatus"]; exists && !boundedString(value, maxResumeProfileFieldRunes) {
 			return false
 		}
 	}
@@ -366,6 +370,7 @@ func MigrateResumeContentV2(content map[string]any) (map[string]any, error) {
 	formatting["entryGapPx"] = formatting["bodyFontSizePx"]
 	profile := migrated["profile"].(map[string]any)
 	profile["enabled"] = true
+	profile["politicalStatus"] = ""
 	if err := ValidateResumeContentVersion(migrated, ContentVersionV4); err != nil {
 		return nil, err
 	}
@@ -386,6 +391,7 @@ func MigrateResumeContentV3(content map[string]any) (map[string]any, error) {
 	}
 	profile := migrated["profile"].(map[string]any)
 	profile["enabled"] = true
+	profile["politicalStatus"] = ""
 	if err := ValidateResumeContentVersion(migrated, ContentVersionV4); err != nil {
 		return nil, err
 	}
