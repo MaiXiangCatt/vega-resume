@@ -30,6 +30,7 @@ export function profileHasContent(
       profile.phone.trim() ||
       profile.email.trim() ||
       profile.location.trim() ||
+      profile.politicalStatus.trim() ||
       profile.links.some((link) => link.label.trim() && link.url.trim()),
     )
   );

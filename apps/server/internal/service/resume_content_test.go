@@ -81,6 +81,7 @@ func TestResumeContentV4SpacingOverridesAndMigration(t *testing.T) {
 
 	v2 := service.DefaultResumeContent()
 	delete(v2["profile"].(map[string]any), "enabled")
+	delete(v2["profile"].(map[string]any), "politicalStatus")
 	formatting := v2["formatting"].(map[string]any)
 	delete(formatting, "entryGapPx")
 	formatting["bodyFontSizePx"] = 13
@@ -94,18 +95,47 @@ func TestResumeContentV4SpacingOverridesAndMigration(t *testing.T) {
 	if got := migrated["profile"].(map[string]any)["enabled"]; got != true {
 		t.Fatalf("v2 profile should migrate to enabled, got %v", got)
 	}
+	if got := migrated["profile"].(map[string]any)["politicalStatus"]; got != "" {
+		t.Fatalf("v2 profile should migrate to an empty political status, got %v", got)
+	}
 	if err := service.ValidateResumeContentVersion(v2, service.ContentVersionV2); err != nil {
 		t.Fatalf("v2 source should remain valid: %v", err)
 	}
 
 	v3 := service.DefaultResumeContent()
 	delete(v3["profile"].(map[string]any), "enabled")
+	delete(v3["profile"].(map[string]any), "politicalStatus")
 	migrated, err = service.MigrateResumeContentV3(v3)
 	if err != nil {
 		t.Fatalf("migrate v3 content: %v", err)
 	}
 	if got := migrated["profile"].(map[string]any)["enabled"]; got != true {
 		t.Fatalf("v3 profile should migrate to enabled, got %v", got)
+	}
+	if got := migrated["profile"].(map[string]any)["politicalStatus"]; got != "" {
+		t.Fatalf("v3 profile should migrate to an empty political status, got %v", got)
+	}
+}
+
+func TestResumeContentV4PoliticalStatusCompatibility(t *testing.T) {
+	content := service.DefaultResumeContent()
+	profile := content["profile"].(map[string]any)
+	delete(profile, "politicalStatus")
+	if err := service.ValidateResumeContentVersion(content, service.ContentVersionV4); err != nil {
+		t.Fatalf("legacy v4 profile without political status should remain valid: %v", err)
+	}
+
+	profile["politicalStatus"] = "中共党员"
+	if err := service.ValidateResumeContentVersion(content, service.ContentVersionV4); err != nil {
+		t.Fatalf("political status should be valid: %v", err)
+	}
+	profile["politicalStatus"] = 1
+	if err := service.ValidateResumeContentVersion(content, service.ContentVersionV4); err == nil {
+		t.Fatal("non-string political status should be rejected")
+	}
+	profile["politicalStatus"] = strings.Repeat("党", 321)
+	if err := service.ValidateResumeContentVersion(content, service.ContentVersionV4); err == nil {
+		t.Fatal("oversized political status should be rejected")
 	}
 }
 

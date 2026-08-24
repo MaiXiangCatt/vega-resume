@@ -83,6 +83,7 @@ export function createDefaultContent(): ResumeContentV4 {
       phone: '',
       email: '',
       location: '',
+      politicalStatus: '',
       links: [],
     },
     sections: [
@@ -104,23 +105,23 @@ export function parseResumeContent(
   if (version === 4) return resumeContentSchema.parse(value) as ResumeContentV4;
   if (version === 3) {
     const content = resumeContentV3Schema.parse(value) as {
-      profile: Omit<ResumeContentV4['profile'], 'enabled'>;
+      profile: Omit<ResumeContentV4['profile'], 'enabled' | 'politicalStatus'>;
       sections: ResumeContentV4['sections'];
       formatting: ResumeFormatting;
     };
     return resumeContentSchema.parse({
       ...content,
-      profile: { ...content.profile, enabled: true },
+      profile: { ...content.profile, enabled: true, politicalStatus: '' },
     }) as ResumeContentV4;
   }
   const content = resumeContentV2Schema.parse(value) as {
-    profile: Omit<ResumeContentV4['profile'], 'enabled'>;
+    profile: Omit<ResumeContentV4['profile'], 'enabled' | 'politicalStatus'>;
     sections: ResumeContentV4['sections'];
     formatting: Omit<ResumeFormatting, 'entryGapPx'>;
   };
   return resumeContentSchema.parse({
     ...content,
-    profile: { ...content.profile, enabled: true },
+    profile: { ...content.profile, enabled: true, politicalStatus: '' },
     formatting: {
       ...content.formatting,
       entryGapPx: content.formatting.bodyFontSizePx,

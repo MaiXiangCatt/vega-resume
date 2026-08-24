@@ -211,6 +211,7 @@ describe('app auth flow integration', () => {
           const content = createDefaultContent();
           const profile = { ...content.profile } as Partial<typeof content.profile>;
           delete profile.enabled;
+          delete profile.politicalStatus;
           const formatting = { ...content.formatting } as Partial<typeof content.formatting>;
           delete formatting.entryGapPx;
           return { ...content, profile, formatting };

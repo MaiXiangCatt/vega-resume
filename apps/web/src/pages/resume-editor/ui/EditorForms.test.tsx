@@ -3,7 +3,33 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createDefaultContent, createSectionItem } from '../model/resume.model';
 import type { SkillsSection, WorkItem, WorkSection } from '../model/resume.types';
-import { SectionEditor } from './EditorForms';
+import { ProfileEditor, SectionEditor } from './EditorForms';
+
+describe('ProfileEditor', () => {
+  it('edits the optional political status as free text', () => {
+    const onChange = vi.fn();
+    const profile = createDefaultContent().profile;
+
+    render(
+      <ProfileEditor
+        avatar={null}
+        onAvatar={vi.fn()}
+        onChange={onChange}
+        onDeleteAvatar={vi.fn()}
+        onDeleteSchoolLogo={vi.fn()}
+        onSchoolLogo={vi.fn()}
+        profile={profile}
+        schoolLogo={null}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: '政治面貌' });
+    expect(input).toHaveAttribute('placeholder', '如：中共党员');
+    fireEvent.change(input, { target: { value: '中共党员' } });
+
+    expect(onChange).toHaveBeenLastCalledWith({ ...profile, politicalStatus: '中共党员' });
+  });
+});
 
 describe('SectionEditor', () => {
   it('edits skills as one Markdown description', () => {

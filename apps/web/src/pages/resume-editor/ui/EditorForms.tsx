@@ -144,15 +144,22 @@ export function ProfileEditor({
             onChange={(event) => setField('email', event.target.value)}
           />
         </Field>
-        <div className="col-span-2">
-          <Field label="所在城市">
-            <Input
-              aria-label="所在城市"
-              value={profile.location}
-              onChange={(event) => setField('location', event.target.value)}
-            />
-          </Field>
-        </div>
+        <Field label="所在城市">
+          <Input
+            aria-label="所在城市"
+            value={profile.location}
+            onChange={(event) => setField('location', event.target.value)}
+          />
+        </Field>
+        <Field label="政治面貌">
+          <Input
+            aria-label="政治面貌"
+            maxLength={320}
+            placeholder="如：中共党员"
+            value={profile.politicalStatus}
+            onChange={(event) => setField('politicalStatus', event.target.value)}
+          />
+        </Field>
       </div>
       <div className="border-t border-[#eee8ec] pt-5">
         <div className="flex items-center justify-between">

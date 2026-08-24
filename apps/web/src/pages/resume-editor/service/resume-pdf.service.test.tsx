@@ -54,6 +54,7 @@ function createResume(profileAlignment: ResumeDocument['profileAlignment']): Res
     phone: '13800000000',
     email: 'qingqing@example.com',
     location: '杭州',
+    politicalStatus: '中共党员',
     links: [],
   };
   const summary = content.sections.find((section) => section.type === 'summary');
@@ -77,6 +78,23 @@ function createResume(profileAlignment: ResumeDocument['profileAlignment']): Res
 }
 
 describe('createResumePdfBlob', () => {
+  it('renders political status into the PDF layout', async () => {
+    const resume = createResume('left');
+    let layout: PdfLayoutNode | undefined;
+    const document = ResumePdfDocument({ avatar: null, resume }) as ReactElement<
+      Record<string, unknown>
+    >;
+    const renderedDocument = cloneElement(document, {
+      onRender: (result: { _INTERNAL__LAYOUT__DATA_?: PdfLayoutNode }) => {
+        layout = result._INTERNAL__LAYOUT__DATA_;
+      },
+    });
+
+    await pdf(renderedDocument).toBlob();
+
+    expect(collectTextLayouts(layout).some(([, text]) => text === '政治面貌：中共党员')).toBe(true);
+  });
+
   it('wraps long CJK Markdown paragraphs onto multiple lines', async () => {
     const resume = createResume('left');
     const summary = resume.content.sections.find((section) => section.type === 'summary');

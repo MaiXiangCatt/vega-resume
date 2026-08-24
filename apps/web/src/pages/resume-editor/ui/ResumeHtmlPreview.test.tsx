@@ -19,6 +19,7 @@ function createResume(): ResumeDocument {
     phone: '',
     email: 'qingqing@example.com',
     location: '',
+    politicalStatus: '',
     links: [{ id: 'portfolio', label: '作品集', url: 'https://example.com' }],
   };
   const summary = content.sections.find((section) => section.type === 'summary');
@@ -153,6 +154,43 @@ describe('ResumeHtmlPreview', () => {
       'center',
     );
     expect(screen.getByRole('heading', { name: '林清清' })).toBeVisible();
+  });
+
+  it.each([
+    ['left', 'left'],
+    ['center', 'center'],
+    ['right', 'right'],
+  ] as const)('shows political status below contacts with %s alignment', (alignment, textAlign) => {
+    const resume = { ...createResume(), profileAlignment: alignment };
+    resume.content.profile.politicalStatus = '  中共党员  ';
+    const { container } = render(<ResumeHtmlPreview avatar={null} resume={resume} />);
+
+    const politicalStatus = screen.getByText('政治面貌：中共党员');
+    const contacts = container.querySelector('a[href="https://example.com"]')?.parentElement;
+
+    expect(politicalStatus).toHaveAttribute('data-resume-profile-field', 'political-status');
+    expect(politicalStatus).toHaveStyle({ textAlign });
+    expect(politicalStatus.previousElementSibling).toBe(contacts);
+  });
+
+  it('shows political status without contacts and omits it when blank', () => {
+    const resume = createResume();
+    resume.content.profile.email = '';
+    resume.content.profile.links = [];
+    resume.content.profile.politicalStatus = '群众';
+    const { rerender } = render(<ResumeHtmlPreview avatar={null} resume={resume} />);
+
+    expect(screen.getByText('政治面貌：群众')).toBeVisible();
+
+    const blankResume = {
+      ...resume,
+      content: {
+        ...resume.content,
+        profile: { ...resume.content.profile, politicalStatus: '   ' },
+      },
+    };
+    rerender(<ResumeHtmlPreview avatar={null} resume={blankResume} />);
+    expect(screen.queryByText(/政治面貌：/)).not.toBeInTheDocument();
   });
 
   it('omits a hidden profile, avatar and section without leaving a leading gap', () => {

@@ -28,6 +28,7 @@ function createClassicResume(): ResumeDocument {
     phone: '13800000000',
     email: 'qingqing@example.com',
     location: '',
+    politicalStatus: '',
     links: [],
   };
   return {
@@ -93,6 +94,24 @@ describe('ResumePdfDocument classic header layout', () => {
     });
     expect(name.props.style).toMatchObject({ textAlign: 'right' });
   });
+
+  it.each(['left', 'center', 'right'] as const)(
+    'places political status on its own line after contacts for %s alignment',
+    (profileAlignment) => {
+      const resume = { ...createClassicResume(), profileAlignment };
+      resume.content.profile.politicalStatus = '  中共党员  ';
+      const document = ResumePdfDocument({ avatar: null, resume }) as PdfElement;
+      const identity = childAt(childAt(childAt(document, 0), 0), 0);
+      const contacts = childAt(identity, 2);
+      const politicalStatus = childAt(identity, 3);
+
+      expect(contacts.props.children).toBeTruthy();
+      expect(politicalStatus.props.children).toEqual(['政治面貌：', '中共党员']);
+      expect(politicalStatus.props.style).toEqual(
+        expect.arrayContaining([expect.objectContaining({ textAlign: profileAlignment })]),
+      );
+    },
+  );
 
   it('mirrors a vertically centered school logo across from the avatar', () => {
     const resume = { ...createClassicResume(), hasSchoolLogo: true };

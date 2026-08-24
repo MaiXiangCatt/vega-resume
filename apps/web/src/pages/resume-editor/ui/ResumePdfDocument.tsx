@@ -120,6 +120,11 @@ export function ResumePdfDocument({
       marginTop: pxToPt(presentation.contactsMarginTopPx),
       rowGap: pxToPt(presentation.contactsRowGapPx),
     },
+    politicalStatus: {
+      color: presentation.bodyColor,
+      fontSize: base,
+      textAlign: presentation.profileTextAlign,
+    },
     avatar: {
       height: pxToPt(presentation.photoHeightPx),
       objectFit: 'contain',
@@ -153,6 +158,10 @@ export function ResumePdfDocument({
   });
 
   const contacts = [profile.phone, profile.email, profile.location].filter(Boolean);
+  const politicalStatus = profile.politicalStatus.trim();
+  const hasPrintableContacts = Boolean(
+    contacts.length || profile.links.some((item) => item.label && item.url),
+  );
   const hasPrintableProfile = profileHasPrintableContent(
     profile,
     Boolean(visibleAvatar),
@@ -192,6 +201,22 @@ export function ResumePdfDocument({
                       </Link>
                     ))}
                 </View>
+              ) : null}
+              {politicalStatus ? (
+                <Text
+                  style={[
+                    styles.politicalStatus,
+                    {
+                      marginTop: pxToPt(
+                        hasPrintableContacts
+                          ? presentation.contactsRowGapPx
+                          : presentation.contactsMarginTopPx,
+                      ),
+                    },
+                  ]}
+                >
+                  政治面貌：{politicalStatus}
+                </Text>
               ) : null}
             </View>
             {visibleAvatar && !avatarOnLeft ? (
